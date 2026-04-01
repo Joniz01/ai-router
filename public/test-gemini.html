@@ -5,58 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Router - Tester Multimodal</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 20px; max-width: 1000px; }
-    select, input, textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
-    button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 10px; }
+    body { 
+      font-family: system-ui, -apple-system, Arial, sans-serif; 
+      margin: 20px; 
+      max-width: 1100px; 
+      background: #f9fafb;
+    }
+    .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    select, input, textarea { 
+      width: 100%; 
+      padding: 12px; 
+      margin: 8px 0; 
+      box-sizing: border-box; 
+      border-radius: 8px; 
+      border: 1px solid #d1d5db; 
+      font-size: 15px;
+    }
+    button { 
+      padding: 12px 24px; 
+      font-size: 16px; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      margin-right: 10px;
+    }
     .btn-send { background: #10b981; color: white; }
     .btn-send:hover { background: #059669; }
     .btn-clear { background: #ef4444; color: white; }
-    #output { border: 1px solid #ddd; padding: 18px; min-height: 400px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.6; border-radius: 8px; margin-top: 15px; }
+    .btn-reset { background: #6b7280; color: white; }
+    #output { 
+      border: 1px solid #e5e7eb; 
+      padding: 20px; 
+      min-height: 420px; 
+      background: #f8fafc; 
+      white-space: pre-wrap; 
+      font-size: 15.5px; 
+      line-height: 1.65; 
+      border-radius: 10px; 
+      margin-top: 15px;
+      overflow-y: auto;
+    }
     .success { color: #10b981; font-weight: bold; }
     .error { color: #ef4444; font-weight: bold; }
-    label { font-weight: 600; margin-top: 12px; display: block; }
-    #imageDrop { border: 3px dashed #10b981; padding: 40px; text-align: center; border-radius: 12px; background: #f0fdf4; transition: all 0.3s; min-height: 200px; }
-    #imageDrop:hover { background: #ecfdf5; }
-    #imagePreview { max-width: 100%; max-height: 380px; margin: 15px auto; border-radius: 8px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    label { font-weight: 600; margin-top: 15px; display: block; color: #374151; }
+    #imageDrop { 
+      border: 3px dashed #10b981; 
+      padding: 40px; 
+      text-align: center; 
+      border-radius: 12px; 
+      background: #f0fdf4; 
+      min-height: 220px;
+      transition: all 0.3s;
+    }
+    #imageDrop:hover { background: #ecfdf5; border-color: #15803d; }
+    #imagePreview { 
+      max-width: 100%; 
+      max-height: 380px; 
+      margin: 15px auto; 
+      border-radius: 10px; 
+      display: none; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .info { font-size: 14px; color: #6b7280; margin-top: 5px; }
   </style>
 </head>
 <body>
-  <h1>🤖 AI Router - Tester Multimodal (Texto + Imágenes)</h1>
+  <div class="container">
+    <h1>🤖 AI Router - Tester Multimodal (Texto + Imágenes)</h1>
 
-  <label>Proveedor:</label>
-  <select id="provider" onchange="updateModels()">
-    <option value="gemini">Gemini (Google) - Mejor en visión</option>
-    <option value="groq">Groq (Llama 4 Scout)</option>
-    <option value="qwen">Qwen VL</option>
-    <option value="deepseek">DeepSeek Vision</option>
-    <option value="xai">xAI / Grok</option>
-  </select>
+    <label>Proveedor:</label>
+    <select id="provider" onchange="updateModels()">
+      <option value="gemini">Gemini (Google) - Mejor visión</option>
+      <option value="groq">Groq (Llama 4 Scout) - Muy rápido</option>
+      <option value="xai">xAI / Grok</option>
+      <option value="qwen">Qwen VL (Alibaba)</option>
+      <option value="deepseek">DeepSeek Vision</option>
+    </select>
 
-  <label>Modelo:</label>
-  <select id="model"></select>
+    <label>Modelo:</label>
+    <select id="model"></select>
 
-  <label>API Key:</label>
-  <input type="password" id="apiKey" placeholder="Pega tu API Key">
+    <label>API Key:</label>
+    <input type="password" id="apiKey" placeholder="Pega tu API Key aquí">
 
-  <label>System Prompt (opcional):</label>
-  <textarea id="systemPrompt" rows="2">Eres un experto analizando gráficos financieros, extrae valores, tendencias y patrones.</textarea>
+    <label>System Prompt (opcional):</label>
+    <textarea id="systemPrompt" rows="2">Eres un experto en análisis de gráficos financieros y Open Interest. Extrae valores numéricos con precisión.</textarea>
 
-  <label>Mensaje de texto (opcional):</label>
-  <textarea id="message" rows="3">Extrae todos los valores importantes del Open Interest que ves en esta imagen (máximos, mínimos, cambios, etc.).</textarea>
+    <label>Mensaje de texto (opcional):</label>
+    <textarea id="message" rows="3">Extrae todos los valores importantes del Open Interest que ves en esta imagen (máximos, mínimos, neto, tendencias y patrones).</textarea>
 
-  <label>Imagen (CTRL + V o arrastra):</label>
-  <div id="imageDrop">
-    <p>📸 Pega una imagen con <strong>CTRL + V</strong> o arrastra desde tu escritorio</p>
-    <img id="imagePreview" alt="Preview de imagen">
+    <label>Imagen (CTRL + V o arrastra y suelta):</label>
+    <div id="imageDrop">
+      <p>📸 Pega una imagen con <strong>CTRL + V</strong> o arrastra desde tu escritorio</p>
+      <img id="imagePreview" alt="Preview de la imagen">
+    </div>
+
+    <div style="margin: 20px 0;">
+      <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar imagen</button>
+      <button class="btn-reset" onclick="resetAll()">🔄 Limpiar todo</button>
+      <button class="btn-send" onclick="sendMessage()">🚀 Enviar Texto + Imagen (Streaming)</button>
+    </div>
+
+    <div class="info" id="status"></div>
+
+    <h2>Respuesta en tiempo real:</h2>
+    <div id="output">Listo. Pega una imagen y presiona Enviar.</div>
   </div>
-
-  <div style="margin-top: 15px;">
-    <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar imagen</button>
-    <button class="btn-send" onclick="sendMessage()">🚀 Enviar Texto + Imagen (Streaming)</button>
-  </div>
-
-  <h2>Respuesta en tiempo real:</h2>
-  <div id="output">Listo. Pega una imagen y envía.</div>
 
   <script>
     const endpoint = "https://ai-router-psi.vercel.app/api/chat";
@@ -65,9 +120,9 @@
     const models = {
       gemini: ["gemini-2.5-flash", "gemini-2.5-pro"],
       groq: ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.3-70b-versatile"],
-      qwen: ["qwen2.5-vl-7b-instruct", "qwen3-vl-flash"],
-      deepseek: ["deepseek-vl-chat"],
-      xai: ["grok-beta"]
+      xai: ["grok-beta"],
+      qwen: ["qwen2.5-vl-7b-instruct"],
+      deepseek: ["deepseek-vl-chat"]
     };
 
     function updateModels() {
@@ -117,6 +172,11 @@
       document.getElementById("imagePreview").style.display = "none";
     }
 
+    function resetAll() {
+      document.getElementById("output").innerHTML = "Todo limpio. Listo para una nueva prueba.";
+      clearImage();
+    }
+
     async function sendMessage() {
       const provider = document.getElementById("provider").value;
       const model = document.getElementById("model").value;
@@ -124,29 +184,35 @@
       const system = document.getElementById("systemPrompt").value.trim();
       const text = document.getElementById("message").value.trim();
       const output = document.getElementById("output");
+      const status = document.getElementById("status");
 
       if (!apiKey) {
-        output.innerHTML = '<span class="error">❌ Ingresa tu API Key</span>';
+        output.innerHTML = '<span class="error">❌ Por favor ingresa tu API Key</span>';
         return;
       }
       if (!currentImageBase64) {
-        output.innerHTML = '<span class="error">❌ Pega una imagen primero</span>';
+        output.innerHTML = '<span class="error">❌ Por favor pega una imagen primero</span>';
         return;
       }
 
-      output.innerHTML = '<span class="success">Enviando imagen + texto...</span><br>';
+      // Guardar API Key en localStorage
+      localStorage.setItem('aiRouterApiKey', apiKey);
+
+      status.innerHTML = `Enviando a <strong>${provider.toUpperCase()}</strong> con modelo <strong>${model}</strong>...`;
+
+      output.innerHTML = '<span class="success">Procesando imagen...</span><br>';
+
+      const content = [];
+      if (text) content.push({ type: "text", text: text });
+      if (currentImageBase64) content.push({ type: "image_url", image_url: { url: currentImageBase64 } });
 
       const body = {
         provider,
         apiKey,
         model,
-        messages: [{
-          role: "user",
-          content: text || "Analiza esta imagen",
-          image: currentImageBase64   // ← Cambiamos a este formato simple
-        }]
+        messages: [{ role: "user", content }],
+        systemPrompt: system || undefined
       };
-      if (system) body.systemPrompt = system;
 
       try {
         const res = await fetch(endpoint, {
@@ -169,10 +235,13 @@
           const { value, done } = await reader.read();
           if (done) {
             output.innerHTML += '<br><br><span class="success">✅ Streaming completado</span>';
+            status.innerHTML = '';
             break;
           }
+
           const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n');
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
@@ -183,18 +252,25 @@
                 } else if (data.error) {
                   output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
                 }
-              } catch(e) {}
+              } catch (e) {}
             }
           }
         }
       } catch (err) {
         output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
+        status.innerHTML = '';
       }
     }
 
+    // Cargar API Key guardada
     window.onload = () => {
       updateModels();
       setupImagePaste();
+
+      const savedKey = localStorage.getItem('aiRouterApiKey');
+      if (savedKey) {
+        document.getElementById("apiKey").value = savedKey;
+      }
     };
   </script>
 </body>
