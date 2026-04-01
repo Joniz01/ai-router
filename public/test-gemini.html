@@ -3,19 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Router - Tester Multimodal (con Imágenes)</title>
+  <title>AI Router - Tester Multimodal</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 20px; max-width: 900px; }
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; max-width: 1000px; }
     select, input, textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
-    button { padding: 12px 24px; font-size: 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
-    button:hover { background: #059669; }
-    #output { border: 1px solid #ddd; padding: 18px; min-height: 350px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.6; border-radius: 8px; margin-top: 10px; }
+    button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 10px; }
+    .btn-send { background: #10b981; color: white; }
+    .btn-send:hover { background: #059669; }
+    .btn-clear { background: #ef4444; color: white; }
+    #output { border: 1px solid #ddd; padding: 18px; min-height: 400px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.6; border-radius: 8px; margin-top: 15px; }
     .success { color: #10b981; font-weight: bold; }
     .error { color: #ef4444; font-weight: bold; }
     label { font-weight: 600; margin-top: 12px; display: block; }
-    #imageDrop { border: 3px dashed #10b981; padding: 30px; text-align: center; border-radius: 12px; background: #f8fafc; transition: all 0.3s; }
+    #imageDrop { border: 3px dashed #10b981; padding: 40px; text-align: center; border-radius: 12px; background: #f0fdf4; transition: all 0.3s; min-height: 200px; }
     #imageDrop:hover { background: #ecfdf5; }
-    #imagePreview { max-width: 100%; max-height: 300px; margin-top: 15px; border-radius: 8px; display: none; }
+    #imagePreview { max-width: 100%; max-height: 380px; margin: 15px auto; border-radius: 8px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
@@ -23,11 +25,11 @@
 
   <label>Proveedor:</label>
   <select id="provider" onchange="updateModels()">
-    <option value="gemini">Gemini (Google) - Mejor visión</option>
-    <option value="groq">Groq (Llama 4 Scout) - Muy rápido</option>
-    <option value="xai">xAI / Grok</option>
-    <option value="qwen">Qwen VL (Alibaba)</option>
+    <option value="gemini">Gemini (Google) - Mejor en visión</option>
+    <option value="groq">Groq (Llama 4 Scout)</option>
+    <option value="qwen">Qwen VL</option>
     <option value="deepseek">DeepSeek Vision</option>
+    <option value="xai">xAI / Grok</option>
   </select>
 
   <label>Modelo:</label>
@@ -37,22 +39,24 @@
   <input type="password" id="apiKey" placeholder="Pega tu API Key">
 
   <label>System Prompt (opcional):</label>
-  <textarea id="systemPrompt" rows="2" placeholder="Eres un experto analizando imágenes..."></textarea>
+  <textarea id="systemPrompt" rows="2">Eres un experto analizando gráficos financieros, extrae valores, tendencias y patrones.</textarea>
 
   <label>Mensaje de texto (opcional):</label>
-  <textarea id="message" rows="3">Describe detalladamente lo que ves en esta imagen y extrae toda la información importante.</textarea>
+  <textarea id="message" rows="3">Extrae todos los valores importantes del Open Interest que ves en esta imagen (máximos, mínimos, cambios, etc.).</textarea>
 
-  <label>Imagen (CTRL + V para pegar o arrastra y suelta):</label>
+  <label>Imagen (CTRL + V o arrastra):</label>
   <div id="imageDrop">
-    <p>📸 Pega aquí una imagen con <strong>CTRL + V</strong><br>o arrastra una imagen desde tu escritorio</p>
-    <img id="imagePreview" alt="Preview">
+    <p>📸 Pega una imagen con <strong>CTRL + V</strong> o arrastra desde tu escritorio</p>
+    <img id="imagePreview" alt="Preview de imagen">
   </div>
-  <button onclick="clearImage()" style="background:#ef4444; margin-top:8px;">🗑️ Limpiar imagen</button>
 
-  <button onclick="sendMessage()" style="margin-top:15px;">🚀 Enviar Texto + Imagen (Streaming)</button>
+  <div style="margin-top: 15px;">
+    <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar imagen</button>
+    <button class="btn-send" onclick="sendMessage()">🚀 Enviar Texto + Imagen (Streaming)</button>
+  </div>
 
   <h2>Respuesta en tiempo real:</h2>
-  <div id="output">Haz clic en Enviar o pega una imagen...</div>
+  <div id="output">Listo. Pega una imagen y envía.</div>
 
   <script>
     const endpoint = "https://ai-router-psi.vercel.app/api/chat";
@@ -61,9 +65,9 @@
     const models = {
       gemini: ["gemini-2.5-flash", "gemini-2.5-pro"],
       groq: ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.3-70b-versatile"],
-      xai: ["grok-beta"],
       qwen: ["qwen2.5-vl-7b-instruct", "qwen3-vl-flash"],
-      deepseek: ["deepseek-vl-chat", "deepseek-chat"]
+      deepseek: ["deepseek-vl-chat"],
+      xai: ["grok-beta"]
     };
 
     function updateModels() {
@@ -78,35 +82,29 @@
       });
     }
 
-    // Soporte CTRL + V y drag & drop
     function setupImagePaste() {
       const dropZone = document.getElementById("imageDrop");
 
-      // Paste
-      document.addEventListener('paste', (e) => {
-        if (e.clipboardData.files.length > 0) {
+      document.addEventListener('paste', e => {
+        if (e.clipboardData.files.length) {
           const file = e.clipboardData.files[0];
-          if (file.type.startsWith('image/')) {
-            handleImageFile(file);
-          }
+          if (file.type.startsWith('image/')) handleImage(file);
         }
       });
 
-      // Drag & Drop
-      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#10b981'; });
-      dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#10b981'; });
+      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#15803d'; });
+      dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '#10b981');
       dropZone.addEventListener('drop', e => {
         e.preventDefault();
-        dropZone.style.borderColor = '#10b981';
         const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) handleImageFile(file);
+        if (file && file.type.startsWith('image/')) handleImage(file);
       });
     }
 
-    function handleImageFile(file) {
+    function handleImage(file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        currentImageBase64 = e.target.result; // data:image/...;base64,...
+      reader.onload = e => {
+        currentImageBase64 = e.target.result;
         const preview = document.getElementById("imagePreview");
         preview.src = currentImageBase64;
         preview.style.display = "block";
@@ -131,25 +129,22 @@
         output.innerHTML = '<span class="error">❌ Ingresa tu API Key</span>';
         return;
       }
-
-      output.innerHTML = '<span class="success">Conectando y enviando imagen...</span><br>';
-
-      // Construir mensajes con imagen si existe
-      let content = [];
-      if (text) content.push({ type: "text", text });
-      if (currentImageBase64) {
-        content.push({
-          type: "image_url",
-          image_url: { url: currentImageBase64 }
-        });
+      if (!currentImageBase64) {
+        output.innerHTML = '<span class="error">❌ Pega una imagen primero</span>';
+        return;
       }
-      if (content.length === 0) content = [{ type: "text", text: "Analiza esta imagen" }];
+
+      output.innerHTML = '<span class="success">Enviando imagen + texto...</span><br>';
 
       const body = {
         provider,
         apiKey,
         model,
-        messages: [{ role: "user", content }]
+        messages: [{
+          role: "user",
+          content: text || "Analiza esta imagen",
+          image: currentImageBase64   // ← Cambiamos a este formato simple
+        }]
       };
       if (system) body.systemPrompt = system;
 
@@ -181,16 +176,14 @@
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
-                const dataStr = line.substring(6).trim();
-                if (!dataStr || dataStr === '[DONE]') continue;
-                const data = JSON.parse(dataStr);
+                const data = JSON.parse(line.substring(6));
                 if (data.chunk) {
                   output.innerHTML += data.chunk.replace(/\n/g, '<br>');
                   output.scrollTop = output.scrollHeight;
                 } else if (data.error) {
                   output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
                 }
-              } catch (e) {}
+              } catch(e) {}
             }
           }
         }
@@ -199,7 +192,6 @@
       }
     }
 
-    // Inicializar
     window.onload = () => {
       updateModels();
       setupImagePaste();
