@@ -16,10 +16,10 @@ export async function POST(request: NextRequest) {
       maxTokens = 4000,
     } = body;
 
-    // Validaciones básicas
+    // Validaciones
     if (!provider || !apiKey || !messages || !Array.isArray(messages)) {
       return new Response(
-        JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey, messages" }),
+        JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey y messages" }),
         { status: 400 }
       );
     }
@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Preparar respuesta en streaming
     const encoder = new TextEncoder();
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -55,14 +55,12 @@ export async function POST(request: NextRequest) {
             maxTokens,
             onChunk: (chunk: string) => {
               fullResponse += chunk;
-              // Enviar chunk al cliente
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`)
               );
             },
           });
 
-          // Enviar señal de finalización
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ done: true, fullResponse })}\n\n`)
           );
@@ -72,7 +70,7 @@ export async function POST(request: NextRequest) {
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({ 
-                error: error.message || "Error desconocido en la IA",
+                error: error.message || "Error al comunicarse con la IA",
                 provider 
               })}\n\n`
             )
@@ -92,9 +90,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error en /api/chat:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message || "Error interno del servidor" 
-      }),
+      JSON.stringify({ error: error.message || "Error interno del servidor" }),
       { status: 500 }
     );
   }
