@@ -5,7 +5,6 @@ import { streamAI, type Provider } from '../../../lib/ai';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
     const {
       provider,
       apiKey,
@@ -16,7 +15,7 @@ export async function POST(request: NextRequest) {
       maxTokens = 4000,
     } = body;
 
-    // Validaciones
+    // Validaciones mejoradas
     if (!provider || !apiKey || !messages || !Array.isArray(messages)) {
       return new Response(
         JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey y messages" }),
@@ -24,9 +23,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["gemini", "groq", "xai"].includes(provider)) {
+    if (!["gemini", "groq", "xai", "qwen", "deepseek"].includes(provider)) {
       return new Response(
-        JSON.stringify({ error: "Proveedor no soportado. Usa: gemini, groq o xai" }),
+        JSON.stringify({ error: "Proveedor no soportado. Usa: gemini, groq, xai, qwen o deepseek" }),
         { status: 400 }
       );
     }
@@ -37,6 +36,28 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Normalizar mensajes con imágenes (para compatibilidad con todos los proveedores)
+    const normalizedMessages = messages.map((msg: any) => {
+      if (msg.image && typeof msg.image === 'string' && msg.image.startsWith('data:image')) {
+        // Convertir formato simple { image: base64 } a formato OpenAI-style
+        return {
+          role: msg.role || "user",
+          content: [
+            { type: "text", text: msg.content || "Analiza esta imagen" },
+            { type: "image_url", image_url: { url: msg.image } }
+          ]
+        };
+      }
+
+      // Si ya viene en formato array (como el nuevo frontend), lo dejamos tal cual
+      if (Array.isArray(msg.content)) {
+        return msg;
+      }
+
+      // Caso normal (solo texto)
+      return msg;
+    });
 
     const encoder = new TextEncoder();
 
@@ -50,7 +71,7 @@ export async function POST(request: NextRequest) {
             apiKey: apiKey.trim(),
             model: model || undefined,
             systemPrompt: systemPrompt || undefined,
-            messages,
+            messages: normalizedMessages,   // ← Usamos la versión normalizada
             temperature,
             maxTokens,
             onChunk: (chunk: string) => {
@@ -69,9 +90,9 @@ export async function POST(request: NextRequest) {
           console.error("Error en streamAI:", error);
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ 
+              `data: ${JSON.stringify({
                 error: error.message || "Error al comunicarse con la IA",
-                provider 
+                provider
               })}\n\n`
             )
           );
