@@ -3,49 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Router - Prueba Multi-Proveedor</title>
+  <title>AI Router Tester</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.5; }
-    #output { border: 1px solid #ddd; padding: 15px; min-height: 300px; background: #f8f9fa; white-space: pre-wrap; margin-top: 10px; font-size: 15px; }
-    button { padding: 12px 20px; font-size: 16px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background: #3367d6; }
-    select, input, textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
-    .error { color: red; font-weight: bold; }
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; max-width: 900px; }
+    select, input, textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
+    button { 
+      padding: 12px 24px; 
+      font-size: 16px; 
+      background: #10b981; 
+      color: white; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-weight: 600;
+    }
+    button:hover { background: #059669; }
+    #output { 
+      border: 1px solid #ddd; 
+      padding: 18px; 
+      min-height: 350px; 
+      background: #f8fafc; 
+      white-space: pre-wrap; 
+      font-size: 15.5px;
+      line-height: 1.6;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .success { color: #10b981; font-weight: bold; }
+    .error { color: #ef4444; font-weight: bold; }
+    label { font-weight: 600; margin-top: 12px; display: block; }
   </style>
 </head>
 <body>
-  <h1>AI Router - Prueba Streaming (Gemini / Groq / Grok)</h1>
+  <h1>🤖 AI Router - Tester de Streaming</h1>
 
-  <label><strong>Proveedor:</strong></label>
+  <label>Proveedor:</label>
   <select id="provider" onchange="updateModels()">
-    <option value="gemini">Gemini (Google)</option>
     <option value="groq">Groq (Llama)</option>
+    <option value="gemini">Gemini (Google)</option>
     <option value="xai">xAI / Grok</option>
   </select>
 
-  <label><strong>Modelo:</strong></label>
+  <label>Modelo:</label>
   <select id="model"></select>
 
-  <label><strong>API Key:</strong></label>
-  <input type="password" id="apiKey" placeholder="Pega tu API Key aquí">
+  <label>API Key:</label>
+  <input type="password" id="apiKey" placeholder="Pega tu API Key">
 
-  <label><strong>System Prompt (opcional):</strong></label>
-  <textarea id="systemPrompt" rows="2" placeholder="Eres un asistente útil y divertido..."></textarea>
+  <label>System Prompt (opcional):</label>
+  <textarea id="systemPrompt" rows="2" placeholder="Eres un experto en programación web..."></textarea>
 
-  <label><strong>Mensaje:</strong></label>
-  <textarea id="message" rows="4">Explica qué es Next.js y cómo funciona el streaming en API Routes.</textarea><br>
+  <label>Mensaje:</label>
+  <textarea id="message" rows="4">Dame un ejemplo práctico de cómo implementar streaming en una API Route de Next.js usando el App Router.</textarea>
 
-  <button onclick="sendMessage()">Enviar con Streaming</button>
+  <button onclick="sendMessage()">🚀 Enviar con Streaming</button>
 
   <h2>Respuesta en tiempo real:</h2>
-  <div id="output">Esperando...</div>
+  <div id="output">Haz clic en Enviar para comenzar...</div>
 
   <script>
     const endpoint = "https://ai-router-psi.vercel.app/api/chat";
 
-    const modelOptions = {
+    const models = {
+      groq: ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile"],
       gemini: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"],
-      groq: ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"],
       xai: ["grok-beta"]
     };
 
@@ -53,10 +74,10 @@
       const provider = document.getElementById("provider").value;
       const select = document.getElementById("model");
       select.innerHTML = "";
-      modelOptions[provider].forEach(m => {
+      models[provider].forEach(model => {
         const opt = document.createElement("option");
-        opt.value = m;
-        opt.textContent = m;
+        opt.value = model;
+        opt.textContent = model;
         select.appendChild(opt);
       });
     }
@@ -66,26 +87,23 @@
       const model = document.getElementById("model").value;
       const apiKey = document.getElementById("apiKey").value.trim();
       const system = document.getElementById("systemPrompt").value.trim();
-      const userMsg = document.getElementById("message").value.trim();
+      const message = document.getElementById("message").value.trim();
       const output = document.getElementById("output");
 
       if (!apiKey) {
-        output.innerHTML = '<span class="error">❌ Ingresa tu API Key</span>';
+        output.innerHTML = '<span class="error">❌ Por favor ingresa tu API Key</span>';
         return;
       }
 
-      output.innerHTML = "Conectando...<br>";
+      output.innerHTML = '<span class="success">Conectando al proveedor...</span><br>';
 
       const body = {
-        provider: provider,
-        apiKey: apiKey,
-        model: model,
-        messages: [{ role: "user", content: userMsg }]
+        provider,
+        apiKey,
+        model,
+        messages: [{ role: "user", content: message }]
       };
-
-      if (system) {
-        body.systemPrompt = system;
-      }
+      if (system) body.systemPrompt = system;
 
       try {
         const res = await fetch(endpoint, {
@@ -95,8 +113,8 @@
         });
 
         if (!res.ok) {
-          const err = await res.text();
-          output.innerHTML += `<span class="error">Error ${res.status}: ${err}</span>`;
+          const errText = await res.text();
+          output.innerHTML += `<span class="error">Error ${res.status}: ${errText}</span>`;
           return;
         }
 
@@ -107,7 +125,7 @@
         while (true) {
           const { value, done } = await reader.read();
           if (done) {
-            output.innerHTML += "<br><br><strong>✅ Streaming finalizado</strong>";
+            output.innerHTML += '<br><br><span class="success">✅ Streaming completado</span>';
             break;
           }
 
@@ -115,28 +133,33 @@
           const lines = chunk.split('\n');
 
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
+            if (line.startsWith('data: ')) {
               try {
-                const data = JSON.parse(line.substring(6));
+                const dataStr = line.substring(6).trim();
+                if (!dataStr || dataStr === '[DONE]') continue;
+                const data = JSON.parse(dataStr);
+
                 if (data.chunk) {
                   output.innerHTML += data.chunk.replace(/\n/g, '<br>');
                   output.scrollTop = output.scrollHeight;
                 } else if (data.error) {
                   output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
                 } else if (data.done) {
-                  output.innerHTML += "<br><br><strong>✅ Respuesta completa</strong>";
+                  output.innerHTML += '<br><br><span class="success">✅ Respuesta completa recibida</span>';
                 }
-              } catch(e) {}
+              } catch (e) {}
             }
           }
         }
-      } catch (e) {
-        output.innerHTML += `<br><span class="error">Error de conexión: ${e.message}</span>`;
+      } catch (err) {
+        output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
       }
     }
 
-    // Inicializar modelos
-    window.onload = updateModels;
+    // Inicializar
+    window.onload = () => {
+      updateModels();
+    };
   </script>
 </body>
 </html>
