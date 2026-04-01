@@ -3,45 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Router Tester</title>
+  <title>AI Router - Tester Multimodal (con Imágenes)</title>
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 20px; max-width: 900px; }
     select, input, textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
-    button { 
-      padding: 12px 24px; 
-      font-size: 16px; 
-      background: #10b981; 
-      color: white; 
-      border: none; 
-      border-radius: 6px; 
-      cursor: pointer; 
-      font-weight: 600;
-    }
+    button { padding: 12px 24px; font-size: 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
     button:hover { background: #059669; }
-    #output { 
-      border: 1px solid #ddd; 
-      padding: 18px; 
-      min-height: 350px; 
-      background: #f8fafc; 
-      white-space: pre-wrap; 
-      font-size: 15.5px;
-      line-height: 1.6;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
+    #output { border: 1px solid #ddd; padding: 18px; min-height: 350px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.6; border-radius: 8px; margin-top: 10px; }
     .success { color: #10b981; font-weight: bold; }
     .error { color: #ef4444; font-weight: bold; }
     label { font-weight: 600; margin-top: 12px; display: block; }
+    #imageDrop { border: 3px dashed #10b981; padding: 30px; text-align: center; border-radius: 12px; background: #f8fafc; transition: all 0.3s; }
+    #imageDrop:hover { background: #ecfdf5; }
+    #imagePreview { max-width: 100%; max-height: 300px; margin-top: 15px; border-radius: 8px; display: none; }
   </style>
 </head>
 <body>
-  <h1>🤖 AI Router - Tester de Streaming</h1>
+  <h1>🤖 AI Router - Tester Multimodal (Texto + Imágenes)</h1>
 
   <label>Proveedor:</label>
   <select id="provider" onchange="updateModels()">
-    <option value="groq">Groq (Llama)</option>
-    <option value="gemini">Gemini (Google)</option>
+    <option value="gemini">Gemini (Google) - Mejor visión</option>
+    <option value="groq">Groq (Llama 4 Scout) - Muy rápido</option>
     <option value="xai">xAI / Grok</option>
+    <option value="qwen">Qwen VL (Alibaba)</option>
+    <option value="deepseek">DeepSeek Vision</option>
   </select>
 
   <label>Modelo:</label>
@@ -51,35 +37,86 @@
   <input type="password" id="apiKey" placeholder="Pega tu API Key">
 
   <label>System Prompt (opcional):</label>
-  <textarea id="systemPrompt" rows="2" placeholder="Eres un experto en programación web..."></textarea>
+  <textarea id="systemPrompt" rows="2" placeholder="Eres un experto analizando imágenes..."></textarea>
 
-  <label>Mensaje:</label>
-  <textarea id="message" rows="4">Dame un ejemplo práctico de cómo implementar streaming en una API Route de Next.js usando el App Router.</textarea>
+  <label>Mensaje de texto (opcional):</label>
+  <textarea id="message" rows="3">Describe detalladamente lo que ves en esta imagen y extrae toda la información importante.</textarea>
 
-  <button onclick="sendMessage()">🚀 Enviar con Streaming</button>
+  <label>Imagen (CTRL + V para pegar o arrastra y suelta):</label>
+  <div id="imageDrop">
+    <p>📸 Pega aquí una imagen con <strong>CTRL + V</strong><br>o arrastra una imagen desde tu escritorio</p>
+    <img id="imagePreview" alt="Preview">
+  </div>
+  <button onclick="clearImage()" style="background:#ef4444; margin-top:8px;">🗑️ Limpiar imagen</button>
+
+  <button onclick="sendMessage()" style="margin-top:15px;">🚀 Enviar Texto + Imagen (Streaming)</button>
 
   <h2>Respuesta en tiempo real:</h2>
-  <div id="output">Haz clic en Enviar para comenzar...</div>
+  <div id="output">Haz clic en Enviar o pega una imagen...</div>
 
   <script>
     const endpoint = "https://ai-router-psi.vercel.app/api/chat";
+    let currentImageBase64 = null;
 
     const models = {
-      groq: ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile"],
-      gemini: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"],
-      xai: ["grok-beta"]
+      gemini: ["gemini-2.5-flash", "gemini-2.5-pro"],
+      groq: ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.3-70b-versatile"],
+      xai: ["grok-beta"],
+      qwen: ["qwen2.5-vl-7b-instruct", "qwen3-vl-flash"],
+      deepseek: ["deepseek-vl-chat", "deepseek-chat"]
     };
 
     function updateModels() {
       const provider = document.getElementById("provider").value;
       const select = document.getElementById("model");
       select.innerHTML = "";
-      models[provider].forEach(model => {
+      models[provider].forEach(m => {
         const opt = document.createElement("option");
-        opt.value = model;
-        opt.textContent = model;
+        opt.value = m;
+        opt.textContent = m;
         select.appendChild(opt);
       });
+    }
+
+    // Soporte CTRL + V y drag & drop
+    function setupImagePaste() {
+      const dropZone = document.getElementById("imageDrop");
+
+      // Paste
+      document.addEventListener('paste', (e) => {
+        if (e.clipboardData.files.length > 0) {
+          const file = e.clipboardData.files[0];
+          if (file.type.startsWith('image/')) {
+            handleImageFile(file);
+          }
+        }
+      });
+
+      // Drag & Drop
+      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#10b981'; });
+      dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#10b981'; });
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#10b981';
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) handleImageFile(file);
+      });
+    }
+
+    function handleImageFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentImageBase64 = e.target.result; // data:image/...;base64,...
+        const preview = document.getElementById("imagePreview");
+        preview.src = currentImageBase64;
+        preview.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearImage() {
+      currentImageBase64 = null;
+      document.getElementById("imagePreview").style.display = "none";
     }
 
     async function sendMessage() {
@@ -87,21 +124,32 @@
       const model = document.getElementById("model").value;
       const apiKey = document.getElementById("apiKey").value.trim();
       const system = document.getElementById("systemPrompt").value.trim();
-      const message = document.getElementById("message").value.trim();
+      const text = document.getElementById("message").value.trim();
       const output = document.getElementById("output");
 
       if (!apiKey) {
-        output.innerHTML = '<span class="error">❌ Por favor ingresa tu API Key</span>';
+        output.innerHTML = '<span class="error">❌ Ingresa tu API Key</span>';
         return;
       }
 
-      output.innerHTML = '<span class="success">Conectando al proveedor...</span><br>';
+      output.innerHTML = '<span class="success">Conectando y enviando imagen...</span><br>';
+
+      // Construir mensajes con imagen si existe
+      let content = [];
+      if (text) content.push({ type: "text", text });
+      if (currentImageBase64) {
+        content.push({
+          type: "image_url",
+          image_url: { url: currentImageBase64 }
+        });
+      }
+      if (content.length === 0) content = [{ type: "text", text: "Analiza esta imagen" }];
 
       const body = {
         provider,
         apiKey,
         model,
-        messages: [{ role: "user", content: message }]
+        messages: [{ role: "user", content }]
       };
       if (system) body.systemPrompt = system;
 
@@ -113,8 +161,8 @@
         });
 
         if (!res.ok) {
-          const errText = await res.text();
-          output.innerHTML += `<span class="error">Error ${res.status}: ${errText}</span>`;
+          const err = await res.text();
+          output.innerHTML += `<span class="error">Error ${res.status}: ${err}</span>`;
           return;
         }
 
@@ -128,24 +176,19 @@
             output.innerHTML += '<br><br><span class="success">✅ Streaming completado</span>';
             break;
           }
-
           const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n');
-
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
                 const dataStr = line.substring(6).trim();
                 if (!dataStr || dataStr === '[DONE]') continue;
                 const data = JSON.parse(dataStr);
-
                 if (data.chunk) {
                   output.innerHTML += data.chunk.replace(/\n/g, '<br>');
                   output.scrollTop = output.scrollHeight;
                 } else if (data.error) {
                   output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
-                } else if (data.done) {
-                  output.innerHTML += '<br><br><span class="success">✅ Respuesta completa recibida</span>';
                 }
               } catch (e) {}
             }
@@ -159,6 +202,7 @@
     // Inicializar
     window.onload = () => {
       updateModels();
+      setupImagePaste();
     };
   </script>
 </body>
