@@ -53,9 +53,7 @@ export async function streamAI({
             fullResponse += content;
             onChunk(content);
           }
-        } catch (e) {
-          // Ignorar líneas no válidas
-        }
+        } catch (e) {}
       }
     }
   };
@@ -81,7 +79,6 @@ export async function streamAI({
       generationConfig: { temperature, maxOutputTokens: maxTokens },
     };
   } else {
-    // Groq y xAI (formato OpenAI compatible)
     const isXai = provider === "xai";
     url = isXai 
       ? "https://api.x.ai/v1/chat/completions" 
@@ -106,12 +103,16 @@ export async function streamAI({
     };
   }
 
-  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  const res = await fetch(url, { 
+    method: "POST", 
+    headers, 
+    body: JSON.stringify(body) 
+  });
 
   if (!res.ok) {
     let errorMsg = `${provider.toUpperCase()} Error ${res.status}`;
     try {
-      const errData = await res.json();
+      const errData = await res.json().catch(() => ({}));
       errorMsg = errData.error?.message || errorMsg;
     } catch {}
     throw new Error(errorMsg);
