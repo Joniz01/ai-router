@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prueba Gemini Streaming</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.5; }
+    #output { 
+      border: 1px solid #ddd; 
+      padding: 15px; 
+      min-height: 300px; 
+      background: #f8f9fa;
+      white-space: pre-wrap;
+      margin-top: 10px;
+      font-size: 15px;
+    }
+    button { padding: 12px 20px; font-size: 16px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #3367d6; }
+    input, textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+    .error { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Prueba Gemini Streaming - AI Router</h1>
+  
+  <label><strong>Tu API Key de Gemini:</strong></label><br>
+  <input type="password" id="apiKey" placeholder="AIzaSy..." style="width:100%; max-width:700px;"><br><br>
+
+  <label><strong>Mensaje para Gemini:</strong></label><br>
+  <textarea id="message" rows="4" style="width:100%; max-width:700px;">Explica qué es Next.js y cómo funciona el streaming en las API Routes.</textarea><br><br>
+
+  <button onclick="sendToGemini()">Enviar a Gemini (Streaming)</button>
+  
+  <h2>Respuesta en tiempo real:</h2>
+  <div id="output">Esperando...</div>
+
+  <script>
+    const endpoint = "https://ai-router-psi.vercel.app/api/chat";
+
+    async function sendToGemini() {
+      const apiKey = document.getElementById("apiKey").value.trim();
+      const userMessage = document.getElementById("message").value.trim();
+      const output = document.getElementById("output");
+
+      output.innerHTML = "Conectando con el servidor...<br>";
+
+      if (!apiKey.startsWith("AIzaSy")) {
+        output.innerHTML += '<span class="error">⚠️ La API Key parece inválida. Debe empezar con AIzaSy...</span>';
+        return;
+      }
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider: "gemini",
+            apiKey: apiKey,
+            model: "gemini-2.0-flash",
+            messages: [{ role: "user", content: userMessage }],
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          output.innerHTML += `<span class="error">Error ${response.status}: ${errorText || 'Error desconocido'}</span>`;
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        output.innerHTML = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            output.innerHTML += "<br><br><strong>✅ Streaming finalizado</strong>";
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.trim() === '' || !line.startsWith("data: ")) continue;
+
+            try {
+              const dataStr = line.substring(6).trim();
+              if (dataStr === "[DONE]" || dataStr === "") continue;
+
+              const data = JSON.parse(dataStr);
+
+              if (data.chunk) {
+                output.innerHTML += data.chunk.replace(/\n/g, '<br>');
+                output.scrollTop = output.scrollHeight;
+              } else if (data.error) {
+                output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
+              } else if (data.done) {
+                output.innerHTML += "<br><br><strong>✅ Respuesta completa recibida</strong>";
+              }
+            } catch (e) {
+              // Ignorar líneas que no son JSON
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error(error);
+        output.innerHTML += `<br><span class="error">Error de conexión: ${error.message}</span><br>`;
+        output.innerHTML += `<small>Nota: Si estás abriendo el archivo localmente (file://), prueba subiéndolo a Vercel o usando Live Server.</small>`;
+      }
+    }
+  </script>
+</body>
+</html>
