@@ -1,6 +1,6 @@
 // app/api/chat/route.ts
 import { NextRequest } from 'next/server';
-import { streamAI, type Provider } from '@/lib/ai';
+import { streamAI, type Provider } from '../../../lib/ai';
 
 export async function POST(request: NextRequest) {
   try {
