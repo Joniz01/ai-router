@@ -6,46 +6,34 @@ interface StreamOptions {
   apiKey: string;
   model?: string;
   systemPrompt?: string;
-  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+  messages: any[];                    // ← any porque puede venir ya normalizado
   onChunk: (chunk: string) => void;
   temperature?: number;
   maxTokens?: number;
 }
 
-export async function streamAI({
-  provider,
-  apiKey,
-  model,
-  systemPrompt,
-  messages,
-  onChunk,
-  temperature = 0.7,
-  maxTokens = 4000,
-}: StreamOptions): Promise<string> {
+export async function streamAI(options: StreamOptions): Promise<string> {
+  const { provider, apiKey, model, systemPrompt, messages, onChunk, temperature = 0.7, maxTokens = 4000 } = options;
   let fullResponse = "";
 
   const handleStream = async (res: Response, extractFn: (json: any) => string | null) => {
     const reader = res.body?.getReader();
     if (!reader) throw new Error("No se pudo leer el stream");
-
     const decoder = new TextDecoder();
     let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() || "";
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith("data: ")) continue;
-
+        if (!trimmed.startsWith("data: ")) continue;
         const data = trimmed.slice(6).trim();
-        if (data === "[DONE]" || data === "") continue;
-
+        if (data === "[DONE]" || !data) continue;
         try {
           const parsed = JSON.parse(data);
           const content = extractFn(parsed);
@@ -66,12 +54,18 @@ export async function streamAI({
     const geminiModel = model || "gemini-2.0-flash";
     url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
-    const contents = messages
-      .filter((m) => m.role !== "system")
-      .map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      }));
+    // ✅ NUEVA LÓGICA: respetar si ya viene normalizado con "parts"
+    const contents = messages.map((msg: any) => {
+      if (msg.parts) {
+        // Ya viene en formato Gemini (con imagen)
+        return { role: "user", parts: msg.parts };
+      }
+      // Mensaje normal de texto
+      return {
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content || msg.text || "" }]
+      };
+    });
 
     body = {
       systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
@@ -79,20 +73,14 @@ export async function streamAI({
       generationConfig: { temperature, maxOutputTokens: maxTokens },
     };
   } else {
+    // Groq y xAI (formato OpenAI)
     const isXai = provider === "xai";
-    url = isXai 
-      ? "https://api.x.ai/v1/chat/completions" 
-      : "https://api.groq.com/openai/v1/chat/completions";
+    url = isXai ? "https://api.x.ai/v1/chat/completions" : "https://api.groq.com/openai/v1/chat/completions";
 
     const openaiMessages = [...messages];
-    if (systemPrompt) {
-      openaiMessages.unshift({ role: "system", content: systemPrompt });
-    }
+    if (systemPrompt) openaiMessages.unshift({ role: "system", content: systemPrompt });
 
-    headers = {
-      ...headers,
-      Authorization: `Bearer ${apiKey}`,
-    };
+    headers = { ...headers, Authorization: `Bearer ${apiKey}` };
 
     body = {
       model: model || (isXai ? "grok-beta" : "llama-3.3-70b-versatile"),
@@ -103,17 +91,13 @@ export async function streamAI({
     };
   }
 
-  const res = await fetch(url, { 
-    method: "POST", 
-    headers, 
-    body: JSON.stringify(body) 
-  });
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
 
   if (!res.ok) {
     let errorMsg = `${provider.toUpperCase()} Error ${res.status}`;
     try {
-      const errData = await res.json().catch(() => ({}));
-      errorMsg = errData.error?.message || errorMsg;
+      const err = await res.json();
+      errorMsg = err.error?.message || errorMsg;
     } catch {}
     throw new Error(errorMsg);
   }
