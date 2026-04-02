@@ -5,112 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Router - Tester Multimodal</title>
   <style>
-    body { 
-      font-family: system-ui, -apple-system, Arial, sans-serif; 
-      margin: 20px; 
-      max-width: 1100px; 
-      background: #f9fafb;
-    }
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; max-width: 1100px; background: #f9fafb; }
     .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-    select, input, textarea { 
-      width: 100%; 
-      padding: 12px; 
-      margin: 8px 0; 
-      box-sizing: border-box; 
-      border-radius: 8px; 
-      border: 1px solid #d1d5db; 
-      font-size: 15px;
-    }
-    button { 
-      padding: 12px 24px; 
-      font-size: 16px; 
-      border: none; 
-      border-radius: 8px; 
-      cursor: pointer; 
-      font-weight: 600; 
-      margin-right: 10px;
-    }
+    select, input, textarea { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; border-radius: 8px; border: 1px solid #d1d5db; font-size: 15px; }
+    button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 10px; }
     .btn-send { background: #10b981; color: white; }
     .btn-send:hover { background: #059669; }
     .btn-clear { background: #ef4444; color: white; }
     .btn-reset { background: #6b7280; color: white; }
-    #output { 
-      border: 1px solid #e5e7eb; 
-      padding: 20px; 
-      min-height: 420px; 
-      background: #f8fafc; 
-      white-space: pre-wrap; 
-      font-size: 15.5px; 
-      line-height: 1.65; 
-      border-radius: 10px; 
-      margin-top: 15px;
-      overflow-y: auto;
-    }
+    #output { border: 1px solid #e5e7eb; padding: 20px; min-height: 420px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.65; border-radius: 10px; margin-top: 15px; overflow-y: auto; }
     .success { color: #10b981; font-weight: bold; }
     .error { color: #ef4444; font-weight: bold; }
     label { font-weight: 600; margin-top: 15px; display: block; color: #374151; }
-    #imageDrop { 
-      border: 3px dashed #10b981; 
-      padding: 40px; 
-      text-align: center; 
-      border-radius: 12px; 
-      background: #f0fdf4; 
-      min-height: 220px;
-      transition: all 0.3s;
-    }
+    #imageDrop { border: 3px dashed #10b981; padding: 40px; text-align: center; border-radius: 12px; background: #f0fdf4; min-height: 220px; transition: all 0.3s; }
     #imageDrop:hover { background: #ecfdf5; border-color: #15803d; }
-    #imagePreview { 
-      max-width: 100%; 
-      max-height: 380px; 
-      margin: 15px auto; 
-      border-radius: 10px; 
-      display: none; 
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    .info { font-size: 14px; color: #6b7280; margin-top: 5px; }
+    #imagePreview { max-width: 100%; max-height: 380px; margin: 15px auto; border-radius: 10px; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🤖 AI Router - Tester Multimodal (Texto + Imágenes)</h1>
+    <h1>🤖 AI Router - Tester Multimodal</h1>
 
     <label>Proveedor:</label>
     <select id="provider" onchange="updateModels()">
       <option value="gemini">Gemini (Google) - Mejor visión</option>
-      <option value="groq">Groq (Llama 4 Scout) - Muy rápido</option>
+      <option value="groq">Groq (Llama 4 Scout)</option>
       <option value="xai">xAI / Grok</option>
-      <option value="qwen">Qwen VL (Alibaba)</option>
-      <option value="deepseek">DeepSeek Vision</option>
     </select>
 
     <label>Modelo:</label>
     <select id="model"></select>
 
     <label>API Key:</label>
-    <input type="password" id="apiKey" placeholder="Pega tu API Key aquí">
+    <input type="password" id="apiKey" placeholder="Pega tu API Key">
 
     <label>System Prompt (opcional):</label>
-    <textarea id="systemPrompt" rows="2">Eres un experto en análisis de gráficos financieros y Open Interest. Extrae valores numéricos con precisión.</textarea>
+    <textarea id="systemPrompt" rows="2">Eres un experto en análisis de gráficos financieros y Open Interest.</textarea>
 
     <label>Mensaje de texto (opcional):</label>
     <textarea id="message" rows="3">Extrae todos los valores importantes del Open Interest que ves en esta imagen (máximos, mínimos, neto, tendencias y patrones).</textarea>
 
-    <label>Imagen (CTRL + V o arrastra y suelta):</label>
+    <label>Imagen (CTRL + V o arrastra):</label>
     <div id="imageDrop">
       <p>📸 Pega una imagen con <strong>CTRL + V</strong> o arrastra desde tu escritorio</p>
-      <img id="imagePreview" alt="Preview de la imagen">
+      <img id="imagePreview" alt="Preview">
     </div>
 
     <div style="margin: 20px 0;">
       <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar imagen</button>
       <button class="btn-reset" onclick="resetAll()">🔄 Limpiar todo</button>
-      <button class="btn-send" onclick="sendMessage()">🚀 Enviar Texto + Imagen (Streaming)</button>
+      <button class="btn-send" onclick="sendMessage()">🚀 Enviar Texto + Imagen</button>
     </div>
 
-    <div class="info" id="status"></div>
-
     <h2>Respuesta en tiempo real:</h2>
-    <div id="output">Listo. Pega una imagen y presiona Enviar.</div>
+    <div id="output">Listo...</div>
   </div>
 
   <script>
@@ -119,10 +67,8 @@
 
     const models = {
       gemini: ["gemini-2.5-flash", "gemini-2.5-pro"],
-      groq: ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.3-70b-versatile"],
-      xai: ["grok-beta"],
-      qwen: ["qwen2.5-vl-7b-instruct"],
-      deepseek: ["deepseek-vl-chat"]
+      groq: ["meta-llama/llama-4-scout-17b-16e-instruct"],
+      xai: ["grok-beta"]
     };
 
     function updateModels() {
@@ -139,14 +85,12 @@
 
     function setupImagePaste() {
       const dropZone = document.getElementById("imageDrop");
-
       document.addEventListener('paste', e => {
         if (e.clipboardData.files.length) {
           const file = e.clipboardData.files[0];
           if (file.type.startsWith('image/')) handleImage(file);
         }
       });
-
       dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#15803d'; });
       dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '#10b981');
       dropZone.addEventListener('drop', e => {
@@ -160,9 +104,8 @@
       const reader = new FileReader();
       reader.onload = e => {
         currentImageBase64 = e.target.result;
-        const preview = document.getElementById("imagePreview");
-        preview.src = currentImageBase64;
-        preview.style.display = "block";
+        document.getElementById("imagePreview").src = currentImageBase64;
+        document.getElementById("imagePreview").style.display = "block";
       };
       reader.readAsDataURL(file);
     }
@@ -173,7 +116,7 @@
     }
 
     function resetAll() {
-      document.getElementById("output").innerHTML = "Todo limpio. Listo para una nueva prueba.";
+      document.getElementById("output").innerHTML = "Todo limpio.";
       clearImage();
     }
 
@@ -184,33 +127,37 @@
       const system = document.getElementById("systemPrompt").value.trim();
       const text = document.getElementById("message").value.trim();
       const output = document.getElementById("output");
-      const status = document.getElementById("status");
 
-      if (!apiKey) {
-        output.innerHTML = '<span class="error">❌ Por favor ingresa tu API Key</span>';
-        return;
+      if (!apiKey) return output.innerHTML = '<span class="error">❌ Ingresa API Key</span>';
+      if (!currentImageBase64) return output.innerHTML = '<span class="error">❌ Pega una imagen</span>';
+
+      output.innerHTML = '<span class="success">Enviando...</span><br>';
+
+      let messagesPayload;
+
+      if (provider === "gemini") {
+        // Formato nativo para Gemini
+        const parts = [];
+        if (text) parts.push({ text: text });
+        if (currentImageBase64) {
+          const base64Data = currentImageBase64.split(',')[1]; // remover "data:image/png;base64,"
+          const mimeType = currentImageBase64.split(';')[0].split(':')[1];
+          parts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
+        }
+        messagesPayload = [{ parts: parts }];
+      } else {
+        // Formato OpenAI-style para Groq, xAI, etc.
+        const content = [];
+        if (text) content.push({ type: "text", text: text });
+        if (currentImageBase64) content.push({ type: "image_url", image_url: { url: currentImageBase64 } });
+        messagesPayload = [{ role: "user", content: content }];
       }
-      if (!currentImageBase64) {
-        output.innerHTML = '<span class="error">❌ Por favor pega una imagen primero</span>';
-        return;
-      }
-
-      // Guardar API Key en localStorage
-      localStorage.setItem('aiRouterApiKey', apiKey);
-
-      status.innerHTML = `Enviando a <strong>${provider.toUpperCase()}</strong> con modelo <strong>${model}</strong>...`;
-
-      output.innerHTML = '<span class="success">Procesando imagen...</span><br>';
-
-      const content = [];
-      if (text) content.push({ type: "text", text: text });
-      if (currentImageBase64) content.push({ type: "image_url", image_url: { url: currentImageBase64 } });
 
       const body = {
         provider,
         apiKey,
         model,
-        messages: [{ role: "user", content }],
+        messages: messagesPayload,
         systemPrompt: system || undefined
       };
 
@@ -235,42 +182,29 @@
           const { value, done } = await reader.read();
           if (done) {
             output.innerHTML += '<br><br><span class="success">✅ Streaming completado</span>';
-            status.innerHTML = '';
             break;
           }
-
           const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n');
-
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.substring(6));
-                if (data.chunk) {
-                  output.innerHTML += data.chunk.replace(/\n/g, '<br>');
-                  output.scrollTop = output.scrollHeight;
-                } else if (data.error) {
-                  output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
-                }
-              } catch (e) {}
+                if (data.chunk) output.innerHTML += data.chunk.replace(/\n/g, '<br>');
+                if (data.error) output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
+              } catch(e) {}
             }
           }
+          output.scrollTop = output.scrollHeight;
         }
       } catch (err) {
         output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
-        status.innerHTML = '';
       }
     }
 
-    // Cargar API Key guardada
     window.onload = () => {
       updateModels();
       setupImagePaste();
-
-      const savedKey = localStorage.getItem('aiRouterApiKey');
-      if (savedKey) {
-        document.getElementById("apiKey").value = savedKey;
-      }
     };
   </script>
 </body>
