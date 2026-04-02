@@ -3,31 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Router - Tester Multimodal</title>
+  <title>AI Router - Gemini + Groq</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 20px; max-width: 1000px; }
-    select, input, textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
-    button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 10px; }
+    body { 
+      font-family: system-ui, -apple-system, Arial, sans-serif; 
+      margin: 20px; 
+      max-width: 1000px; 
+      background: #f9fafb;
+      line-height: 1.6;
+    }
+    select, input, textarea { 
+      width: 100%; 
+      padding: 12px; 
+      margin: 8px 0 16px 0; 
+      box-sizing: border-box; 
+      border-radius: 8px; 
+      border: 1px solid #d1d5db; 
+      font-size: 15px;
+    }
+    button { 
+      padding: 12px 24px; 
+      font-size: 16px; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      margin-right: 12px; 
+    }
+    .btn-clear { background: #ef4444; color: white; }
+    .btn-clear:hover { background: #dc2626; }
     .btn-send { background: #10b981; color: white; }
     .btn-send:hover { background: #059669; }
-    .btn-clear { background: #ef4444; color: white; }
-    #output { border: 1px solid #ddd; padding: 18px; min-height: 400px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.6; border-radius: 8px; margin-top: 15px; overflow-y: auto; }
+    
+    #output { 
+      border: 1px solid #e5e7eb; 
+      padding: 20px; 
+      min-height: 420px; 
+      background: white; 
+      white-space: pre-wrap; 
+      font-size: 15.5px; 
+      line-height: 1.65; 
+      border-radius: 10px; 
+      margin-top: 15px; 
+      overflow-y: auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
     .success { color: #10b981; font-weight: bold; }
     .error { color: #ef4444; font-weight: bold; }
-    label { font-weight: 600; margin-top: 12px; display: block; }
-    #imageDrop { border: 3px dashed #10b981; padding: 40px; text-align: center; border-radius: 12px; background: #f0fdf4; transition: all 0.3s; min-height: 200px; }
-    #imageDrop:hover { background: #ecfdf5; }
-    #imagePreview { max-width: 100%; max-height: 380px; margin: 15px auto; border-radius: 8px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    label { 
+      font-weight: 600; 
+      margin-top: 16px; 
+      display: block; 
+      color: #374151;
+    }
+    #imageDrop { 
+      border: 3px dashed #10b981; 
+      padding: 50px 20px; 
+      text-align: center; 
+      border-radius: 12px; 
+      background: #f0fdf4; 
+      transition: all 0.3s; 
+      min-height: 220px;
+      cursor: pointer;
+    }
+    #imageDrop:hover { background: #ecfdf5; border-color: #15803d; }
+    #imagePreview { 
+      max-width: 100%; 
+      max-height: 400px; 
+      margin: 20px auto; 
+      border-radius: 10px; 
+      display: none; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    }
+    h1 { color: #111827; margin-bottom: 10px; }
+    .note { font-size: 13px; color: #6b7280; margin-top: 4px; }
   </style>
 </head>
 <body>
-  <h1>🤖 AI Router - Tester Multimodal</h1>
+  <h1>🤖 AI Router - Gemini + Groq</h1>
+  <p class="note">Solo Gemini y Groq • Modelo Groq: Llama 4 Scout</p>
 
   <label>Proveedor:</label>
   <select id="provider" onchange="updateModels()">
-    <option value="gemini">Gemini (Google) - Mejor en visión</option>
-    <option value="groq">Groq (Llama 3.3 70B)</option>
-    <option value="xai">xAI / Grok</option>
+    <option value="gemini">Gemini (Google) - Mejor para visión</option>
+    <option value="groq">Groq (Llama 4 Scout) - Muy rápido</option>
   </select>
 
   <label>Modelo:</label>
@@ -37,10 +96,10 @@
   <input type="password" id="apiKey" placeholder="Pega tu API Key aquí">
 
   <label>System Prompt (opcional):</label>
-  <textarea id="systemPrompt" rows="2">Eres un asistente útil y preciso.</textarea>
+  <textarea id="systemPrompt" rows="2">Eres un asistente útil, preciso y detallado.</textarea>
 
   <label>Mensaje de texto (opcional):</label>
-  <textarea id="message" rows="3">Describe detalladamente lo que ves en esta imagen.</textarea>
+  <textarea id="message" rows="3">Analiza esta imagen y descríbela con detalle.</textarea>
 
   <label>Imagen (CTRL + V o arrastra):</label>
   <div id="imageDrop">
@@ -48,31 +107,30 @@
     <img id="imagePreview" alt="Preview de imagen">
   </div>
 
-  <div style="margin-top: 15px;">
+  <div style="margin-top: 20px;">
     <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar imagen</button>
     <button class="btn-send" onclick="sendMessage()">🚀 Enviar Texto + Imagen (Streaming)</button>
   </div>
 
   <h2>Respuesta en tiempo real:</h2>
-  <div id="output">Listo para probar. Selecciona proveedor, pega tu API Key y una imagen.</div>
+  <div id="output">Listo. Selecciona proveedor, pega tu API Key y una imagen para comenzar.</div>
 
   <script>
-    const endpoint = "https://ai-router-psi.vercel.app/api/chat";   // ← Cambia esta URL por la tuya si es diferente
+    // Cambia esta URL por la de tu proyecto en Vercel
+    const endpoint = "https://ai-router-psi.vercel.app/api/chat";
 
     let currentImageBase64 = null;
 
     const models = {
       gemini: [
-        "gemini-2.5-flash",        // Recomendado (mejor cuota gratuita)
+        "gemini-2.5-flash",        // Recomendado para uso gratuito
         "gemini-2.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-2.5-pro"
+        "gemini-2.0-flash"
       ],
       groq: [
-        "llama-3.3-70b-versatile",
-        "meta-llama/llama-4-scout-17b-16e-instruct"
-      ],
-      xai: ["grok-beta"]
+        "meta-llama/llama-4-scout-17b-16e-instruct",   // ← Modelo que quieres usar
+        "llama-3.3-70b-versatile"
+      ]
     };
 
     function updateModels() {
@@ -87,13 +145,11 @@
         select.appendChild(opt);
       });
 
-      // Selección automática del mejor modelo gratuito
+      // Selección automática del modelo preferido
       if (provider === "gemini") {
         select.value = "gemini-2.5-flash";
       } else if (provider === "groq") {
-        select.value = "llama-3.3-70b-versatile";
-      } else if (provider === "xai") {
-        select.value = "grok-beta";
+        select.value = "meta-llama/llama-4-scout-17b-16e-instruct";
       }
     }
 
@@ -101,7 +157,7 @@
       const dropZone = document.getElementById("imageDrop");
 
       document.addEventListener('paste', e => {
-        if (e.clipboardData.files.length) {
+        if (e.clipboardData?.files?.length) {
           const file = e.clipboardData.files[0];
           if (file.type.startsWith('image/')) handleImage(file);
         }
@@ -144,11 +200,11 @@
       const output = document.getElementById("output");
 
       if (!apiKey) {
-        output.innerHTML = '<span class="error">❌ Ingresa tu API Key</span>';
+        output.innerHTML = '<span class="error">❌ Por favor ingresa tu API Key</span>';
         return;
       }
 
-      output.innerHTML = '<span class="success">Enviando solicitud...</span><br>';
+      output.innerHTML = '<span class="success">Enviando solicitud a ' + provider.toUpperCase() + '...</span><br>';
 
       const body = {
         provider,
@@ -156,7 +212,7 @@
         model,
         messages: [{
           role: "user",
-          content: text || "Analiza esta imagen",
+          content: text || "Analiza esta imagen con detalle",
           image: currentImageBase64
         }]
       };
