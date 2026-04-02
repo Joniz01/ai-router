@@ -5,7 +5,7 @@ import { streamAI, type Provider } from '../../../lib/ai';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
+    let {
       provider,
       apiKey,
       model,
@@ -15,47 +15,35 @@ export async function POST(request: NextRequest) {
       maxTokens = 4000,
     } = body;
 
-    // Validaciones mejoradas
     if (!provider || !apiKey || !messages || !Array.isArray(messages)) {
-      return new Response(
-        JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey y messages" }),
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey y messages" }), { status: 400 });
     }
 
     if (!["gemini", "groq", "xai", "qwen", "deepseek"].includes(provider)) {
-      return new Response(
-        JSON.stringify({ error: "Proveedor no soportado. Usa: gemini, groq, xai, qwen o deepseek" }),
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: "Proveedor no soportado" }), { status: 400 });
     }
 
-    if (messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "El array messages no puede estar vacío" }),
-        { status: 400 }
-      );
-    }
-
-    // Normalizar mensajes con imágenes (para compatibilidad con todos los proveedores)
+    // === NORMALIZACIÓN DE MENSAJES CON IMÁGENES ===
     const normalizedMessages = messages.map((msg: any) => {
+      if (!msg.content) return msg;
+
+      // Si content ya es un array (formato OpenAI-style)
+      if (Array.isArray(msg.content)) {
+        return msg;
+      }
+
+      // Si viene con campo "image" (formato simple)
       if (msg.image && typeof msg.image === 'string' && msg.image.startsWith('data:image')) {
-        // Convertir formato simple { image: base64 } a formato OpenAI-style
         return {
           role: msg.role || "user",
           content: [
-            { type: "text", text: msg.content || "Analiza esta imagen" },
+            { type: "text", text: msg.content || "Analiza esta imagen detalladamente" },
             { type: "image_url", image_url: { url: msg.image } }
           ]
         };
       }
 
-      // Si ya viene en formato array (como el nuevo frontend), lo dejamos tal cual
-      if (Array.isArray(msg.content)) {
-        return msg;
-      }
-
-      // Caso normal (solo texto)
+      // Caso texto normal
       return msg;
     });
 
@@ -71,30 +59,21 @@ export async function POST(request: NextRequest) {
             apiKey: apiKey.trim(),
             model: model || undefined,
             systemPrompt: systemPrompt || undefined,
-            messages: normalizedMessages,   // ← Usamos la versión normalizada
+            messages: normalizedMessages,
             temperature,
             maxTokens,
             onChunk: (chunk: string) => {
               fullResponse += chunk;
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`)
-              );
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
             },
           });
 
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ done: true, fullResponse })}\n\n`)
-          );
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, fullResponse })}\n\n`));
           controller.close();
         } catch (error: any) {
-          console.error("Error en streamAI:", error);
+          console.error(`Error con ${provider}:`, error);
           controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                error: error.message || "Error al comunicarse con la IA",
-                provider
-              })}\n\n`
-            )
+            encoder.encode(`data: ${JSON.stringify({ error: error.message || "Error desconocido", provider })}\n\n`)
           );
           controller.close();
         }
@@ -110,9 +89,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error en /api/chat:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Error interno del servidor" }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: error.message || "Error interno" }), { status: 500 });
   }
 }
