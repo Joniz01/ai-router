@@ -1,5 +1,5 @@
 // lib/ai.ts
-export type Provider = "gemini" | "groq" | "xai" | "qwen" | "deepseek";
+export type Provider = "gemini" | "groq" | "xai";
 
 interface StreamOptions {
   provider: Provider;
@@ -68,39 +68,17 @@ export async function streamAI(options: StreamOptions): Promise<string> {
       generationConfig: { temperature, maxOutputTokens: maxTokens },
     };
   } else {
-    // Proveedores OpenAI-compatible
-    const baseUrlMap: Record<string, string> = {
-      groq: "https://api.groq.com/openai/v1/chat/completions",
-      xai: "https://api.x.ai/v1/chat/completions",
-      qwen: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
-      deepseek: "https://api.deepseek.com/chat/completions"
-    };
+    // Groq y xAI
+    const isXai = provider === "xai";
+    url = isXai ? "https://api.x.ai/v1/chat/completions" : "https://api.groq.com/openai/v1/chat/completions";
 
-    url = baseUrlMap[provider]!;
-
-    // Filtrar imágenes para DeepSeek (no las soporta bien)
-    let processedMessages = messages;
-    if (provider === "deepseek") {
-      processedMessages = messages.map((msg: any) => {
-        if (Array.isArray(msg.content)) {
-          // Mantener solo la parte de texto
-          const textPart = msg.content.find((part: any) => part.type === "text");
-          return {
-            role: msg.role,
-            content: textPart ? textPart.text : msg.content
-          };
-        }
-        return msg;
-      });
-    }
-
-    const openaiMessages = [...processedMessages];
+    const openaiMessages = [...messages];
     if (systemPrompt) openaiMessages.unshift({ role: "system", content: systemPrompt });
 
     headers = { ...headers, Authorization: `Bearer ${apiKey}` };
 
     body = {
-      model: model || getDefaultModel(provider),
+      model: model || (isXai ? "grok-beta" : "llama-3.3-70b-versatile"),
       messages: openaiMessages,
       temperature,
       max_tokens: maxTokens,
@@ -126,14 +104,4 @@ export async function streamAI(options: StreamOptions): Promise<string> {
   }
 
   return fullResponse;
-}
-
-function getDefaultModel(provider: string): string {
-  const defaults: Record<string, string> = {
-    groq: "llama-3.3-70b-versatile",
-    xai: "grok-beta",
-    qwen: "qwen2.5-vl-72b-instruct",
-    deepseek: "deepseek-chat"
-  };
-  return defaults[provider] || "llama-3.3-70b-versatile";
 }
