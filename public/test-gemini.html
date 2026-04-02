@@ -27,7 +27,7 @@
   <select id="provider" onchange="updateModels()">
     <option value="gemini">Gemini (Google) - Mejor en visión</option>
     <option value="groq">Groq (Llama 4 Scout)</option>
-    <option value="qwen">Qwen VL</option>
+    <option value="qwen">Qwen VL (Alibaba)</option>
     <option value="deepseek">DeepSeek Vision</option>
     <option value="xai">xAI / Grok</option>
   </select>
@@ -63,12 +63,12 @@
     let currentImageBase64 = null;
 
     const models = {
-      gemini: ["gemini-2.5-flash", "gemini-2.5-pro"],
-      groq: ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.3-70b-versatile"],
-      qwen: ["qwen2.5-vl-7b-instruct", "qwen3-vl-flash"],
-      deepseek: ["deepseek-vl-chat"],
-      xai: ["grok-beta"]
-    };
+  gemini: ["gemini-2.0-flash", "gemini-2.5-pro"],
+  groq: ["llama-3.3-70b-versatile", "meta-llama/llama-4-scout-17b-16e-instruct"],
+  qwen: ["qwen2.5-vl-72b-instruct", "qwen-vl-plus"],
+  deepseek: ["deepseek-chat", "deepseek-vl"],   // DeepSeek visión es limitada
+  xai: ["grok-beta"]
+};
 
     function updateModels() {
       const provider = document.getElementById("provider").value;
