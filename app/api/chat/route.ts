@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["gemini", "groq", "xai"].includes(provider)) {  // Agrega qwen/deepseek después si quieres
+    if (!["gemini", "groq", "xai", "qwen", "deepseek"].includes(provider)) {  // Agrega qwen/deepseek después si quieres
       return new Response(
-        JSON.stringify({ error: "Proveedor no soportado. Usa: gemini, groq o xai" }),
-        { status: 400 }
-      );
+  JSON.stringify({ error: "Proveedor no soportado. Usa: gemini, groq, xai, qwen o deepseek" }),
+  { status: 400 }
+);
     }
 
     // === NORMALIZACIÓN INTELIGENTE DE IMÁGENES ===
