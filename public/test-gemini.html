@@ -5,33 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Router - Prueba de Visión</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9fafb; }
-    .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-    button { padding: 14px 28px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; margin-right: 10px; }
-    .btn-send { background: #10b981; color: white; }
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; background: #f9fafb; }
+    .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 6px 25px rgba(0,0,0,0.1); }
+    input, button { padding: 12px 20px; font-size: 16px; border-radius: 8px; margin: 8px 0; }
+    button { border: none; cursor: pointer; font-weight: 600; }
     .btn-clear { background: #ef4444; color: white; }
+    .btn-send { background: #10b981; color: white; }
     #output { 
       border: 1px solid #ddd; 
-      padding: 20px; 
-      min-height: 500px; 
+      padding: 25px; 
+      min-height: 480px; 
       background: #f8fafc; 
       white-space: pre-wrap; 
-      font-size: 15.5px; 
       line-height: 1.7; 
-      border-radius: 10px; 
-      margin-top: 15px;
+      border-radius: 12px; 
+      margin-top: 20px;
+      font-size: 15.8px;
     }
-    .status { font-weight: bold; margin: 10px 0; }
+    #imageDrop {
+      border: 3px dashed #10b981;
+      padding: 50px 20px;
+      text-align: center;
+      border-radius: 12px;
+      background: #f0fdf4;
+      min-height: 260px;
+      margin: 15px 0;
+      transition: all 0.3s;
+    }
+    #imageDrop:hover { background: #ecfdf5; }
+    #imagePreview { max-width: 100%; max-height: 420px; margin-top: 15px; border-radius: 10px; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+    .status { font-weight: bold; color: #166534; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>🧪 Prueba de Visión - AI Router</h1>
 
-    <p><strong>Proveedor actual:</strong> Gemini y Groq (prueba ambos)</p>
+    <label><strong>API Key:</strong></label>
+    <input type="password" id="apiKey" placeholder="Pega tu API Key aquí" style="width: 100%;">
 
-    <label>API Key:</label>
-    <input type="password" id="apiKey" placeholder="Pega tu API Key" style="width:100%; padding:12px; margin-bottom:15px;">
+    <label><strong>Imagen (CTRL + V o arrastra aquí):</strong></label>
+    <div id="imageDrop">
+      <p><strong>📸 Pega la imagen aquí con CTRL + V</strong><br>o arrastra la imagen desde tu escritorio</p>
+      <img id="imagePreview" alt="Vista previa de la imagen">
+    </div>
 
     <div>
       <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar Imagen</button>
@@ -39,32 +56,65 @@
     </div>
 
     <h2>Respuesta del modelo:</h2>
-    <div id="output">Esperando respuesta...</div>
+    <div id="output">Esperando que pegues una imagen y presiones "Enviar Imagen al Modelo"...<br><br>Prueba primero con Gemini.</div>
   </div>
 
   <script>
     let currentImageBase64 = null;
     const endpoint = "https://ai-router-psi.vercel.app/api/chat";
 
-    // Cargar imagen pegada o arrastrada
-    document.addEventListener('paste', e => {
-      const file = e.clipboardData.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = ev => {
-          currentImageBase64 = ev.target.result;
-          console.log("Imagen cargada, tamaño:", currentImageBase64.length);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
+    // Configurar pegar y arrastrar imagen
+    function setupDropZone() {
+      const dropZone = document.getElementById("imageDrop");
+
+      document.addEventListener('paste', (e) => {
+        const file = e.clipboardData.files[0];
+        if (file && file.type.startsWith('image/')) {
+          loadImage(file);
+        }
+      });
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#15803d';
+      });
+
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.style.borderColor = '#10b981';
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#10b981';
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+          loadImage(file);
+        }
+      });
+    }
+
+    function loadImage(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentImageBase64 = e.target.result;
+        const preview = document.getElementById("imagePreview");
+        preview.src = currentImageBase64;
+        preview.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearImage() {
+      currentImageBase64 = null;
+      document.getElementById("imagePreview").style.display = "none";
+    }
 
     async function sendToAI() {
       const apiKey = document.getElementById("apiKey").value.trim();
       const output = document.getElementById("output");
 
       if (!apiKey) {
-        output.innerHTML = '<span style="color:red">❌ Ingresa tu API Key</span>';
+        output.innerHTML = '<span style="color:red">❌ Por favor ingresa tu API Key</span>';
         return;
       }
       if (!currentImageBase64) {
@@ -72,16 +122,15 @@
         return;
       }
 
-      output.innerHTML = '<span class="status">Enviando imagen al modelo...</span><br>';
+      output.innerHTML = '<span class="status">Enviando imagen al modelo...</span><br><br>';
 
-      // Enviamos en formato simple (el que funcionaba antes)
       const body = {
-        provider: "gemini",           // Cambia a "groq" para probar el otro
+        provider: "gemini",   // Cambia manualmente a "groq" si quieres probar el otro
         apiKey: apiKey,
         model: "gemini-2.5-flash",
         messages: [{
           role: "user",
-          content: "Analiza esta imagen con atención y extrae toda la información del Open Interest. Incluye valores máximos, mínimos, neto, tendencias y cualquier patrón que observes.",
+          content: "Analiza esta imagen con atención. Extrae todos los valores del Open Interest que observes: máximos, mínimos, neto, cambios importantes, tendencias y cualquier patrón relevante.",
           image: currentImageBase64
         }]
       };
@@ -94,20 +143,19 @@
         });
 
         if (!res.ok) {
-          const err = await res.text();
-          output.innerHTML += `<span style="color:red">Error ${res.status}: ${err}</span>`;
+          const errorText = await res.text();
+          output.innerHTML += `<span style="color:red">Error: ${errorText}</span>`;
           return;
         }
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
-
         output.innerHTML = "";
 
         while (true) {
           const { value, done } = await reader.read();
           if (done) {
-            output.innerHTML += '<br><br><strong>✅ Streaming finalizado</strong>';
+            output.innerHTML += '<br><br><strong>✅ Análisis completado</strong>';
             break;
           }
 
@@ -117,19 +165,12 @@
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               try {
-                const dataStr = line.substring(6).trim();
-                if (!dataStr) continue;
-                const data = JSON.parse(dataStr);
-
+                const data = JSON.parse(line.substring(6));
                 if (data.chunk) {
-                  output.innerHTML += data.chunk;           // ← Aquí mostramos el texto que llega
+                  output.innerHTML += data.chunk.replace(/\n/g, '<br>');
                   output.scrollTop = output.scrollHeight;
-                } else if (data.error) {
-                  output.innerHTML += `<br><span style="color:red">Error: ${data.error}</span>`;
                 }
-              } catch (e) {
-                // Ignorar líneas que no son JSON
-              }
+              } catch (e) {}
             }
           }
         }
@@ -138,10 +179,7 @@
       }
     }
 
-    // Permitir pegar imagen incluso si el foco está en otro lugar
-    window.onload = () => {
-      console.log("Página cargada - CTRL + V para pegar imagen");
-    };
+    window.onload = setupDropZone;
   </script>
 </body>
 </html>
