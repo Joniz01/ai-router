@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
       maxTokens = 4000,
     } = body;
 
-    // Validaciones mejoradas
     if (!provider || !apiKey || !messages || !Array.isArray(messages)) {
       return new Response(
         JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey y messages" }),
@@ -23,40 +22,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["gemini", "groq", "xai", "qwen", "deepseek"].includes(provider)) {
+    if (!["gemini", "groq", "xai"].includes(provider)) {  // Agrega qwen/deepseek después si quieres
       return new Response(
-        JSON.stringify({ error: "Proveedor no soportado. Usa: gemini, groq, xai, qwen o deepseek" }),
+        JSON.stringify({ error: "Proveedor no soportado. Usa: gemini, groq o xai" }),
         { status: 400 }
       );
     }
 
-    if (messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "El array messages no puede estar vacío" }),
-        { status: 400 }
-      );
-    }
-
-    // Normalizar mensajes con imágenes (para compatibilidad con todos los proveedores)
+    // === NORMALIZACIÓN INTELIGENTE DE IMÁGENES ===
     const normalizedMessages = messages.map((msg: any) => {
-      if (msg.image && typeof msg.image === 'string' && msg.image.startsWith('data:image')) {
-        // Convertir formato simple { image: base64 } a formato OpenAI-style
+      if (!msg.image || typeof msg.image !== 'string' || !msg.image.startsWith('data:image')) {
+        return msg; // sin imagen → tal cual
+      }
+
+      const base64Data = msg.image.includes(',') 
+        ? msg.image.split(',')[1] 
+        : msg.image;
+
+      const mimeType = msg.image.includes('image/png') ? 'image/png' 
+                      : msg.image.includes('image/jpeg') ? 'image/jpeg' 
+                      : 'image/png';
+
+      if (provider === "gemini") {
+        // Formato nativo Gemini
+        const parts = [];
+        if (msg.content || msg.text) {
+          parts.push({ text: msg.content || msg.text });
+        }
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data: base64Data
+          }
+        });
+
         return {
-          role: msg.role || "user",
-          content: [
-            { type: "text", text: msg.content || "Analiza esta imagen" },
-            { type: "image_url", image_url: { url: msg.image } }
-          ]
+          role: "user",
+          parts: parts
+        };
+      } else {
+        // Formato OpenAI-style para Groq y xAI
+        const content = [];
+        if (msg.content || msg.text) {
+          content.push({ type: "text", text: msg.content || msg.text });
+        }
+        content.push({
+          type: "image_url",
+          image_url: { url: msg.image }
+        });
+
+        return {
+          role: "user",
+          content: content
         };
       }
-
-      // Si ya viene en formato array (como el nuevo frontend), lo dejamos tal cual
-      if (Array.isArray(msg.content)) {
-        return msg;
-      }
-
-      // Caso normal (solo texto)
-      return msg;
     });
 
     const encoder = new TextEncoder();
@@ -71,7 +90,7 @@ export async function POST(request: NextRequest) {
             apiKey: apiKey.trim(),
             model: model || undefined,
             systemPrompt: systemPrompt || undefined,
-            messages: normalizedMessages,   // ← Usamos la versión normalizada
+            messages: normalizedMessages,
             temperature,
             maxTokens,
             onChunk: (chunk: string) => {
@@ -87,14 +106,9 @@ export async function POST(request: NextRequest) {
           );
           controller.close();
         } catch (error: any) {
-          console.error("Error en streamAI:", error);
+          console.error(`Error con ${provider}:`, error);
           controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                error: error.message || "Error al comunicarse con la IA",
-                provider
-              })}\n\n`
-            )
+            encoder.encode(`data: ${JSON.stringify({ error: error.message || "Error al comunicarse con la IA" })}\n\n`)
           );
           controller.close();
         }
