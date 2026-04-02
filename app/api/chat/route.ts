@@ -5,6 +5,7 @@ import { streamAI, type Provider } from '../../../lib/ai';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
     const {
       provider,
       apiKey,
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest) {
       maxTokens = 4000,
     } = body;
 
+    // Validaciones básicas
     if (!provider || !apiKey || !messages || !Array.isArray(messages)) {
       return new Response(
         JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey y messages" }),
@@ -22,40 +24,81 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["gemini", "groq", "xai", "qwen", "deepseek"].includes(provider)) {  // Agrega qwen/deepseek después si quieres
+    if (!["gemini", "groq", "xai", "qwen", "deepseek"].includes(provider)) {
       return new Response(
-  JSON.stringify({ error: "Proveedor no soportado. Usa: gemini, groq, xai, qwen o deepseek" }),
-  { status: 400 }
-);
+        JSON.stringify({ 
+          error: "Proveedor no soportado. Usa: gemini, groq, xai, qwen o deepseek" 
+        }),
+        { status: 400 }
+      );
+    }
+
+    if (messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "El array messages no puede estar vacío" }),
+        { status: 400 }
+      );
     }
 
     // === NORMALIZACIÓN INTELIGENTE DE IMÁGENES ===
-const normalizedMessages = messages.map((msg: any) => {
-  if (!msg.image || typeof msg.image !== 'string' || !msg.image.startsWith('data:image')) {
-    return msg; // texto normal
-  }
+    const normalizedMessages = messages.map((msg: any) => {
+      // Si no hay imagen, devolvemos el mensaje tal cual
+      if (!msg.image || typeof msg.image !== 'string' || !msg.image.startsWith('data:image')) {
+        return msg;
+      }
 
-  const base64Data = msg.image.includes(',') ? msg.image.split(',')[1] : msg.image;
-  const mimeType = msg.image.includes('image/png') ? 'image/png' 
-                  : msg.image.includes('image/jpeg') ? 'image/jpeg' 
-                  : 'image/png';
+      const base64Data = msg.image.includes(',') 
+        ? msg.image.split(',')[1] 
+        : msg.image;
 
-  if (provider === "gemini") {
-    const parts = [];
-    if (msg.content || msg.text) parts.push({ text: msg.content || msg.text });
-    parts.push({
-      inline_data: { mime_type: mimeType, data: base64Data }
+      const mimeType = msg.image.includes('image/png') ? 'image/png' 
+                      : msg.image.includes('image/jpeg') ? 'image/jpeg' 
+                      : 'image/png';
+
+      // Tratamiento especial por proveedor
+      if (provider === "gemini") {
+        // Formato nativo de Gemini (mejor soporte multimodal)
+        const parts = [];
+        if (msg.content || msg.text) {
+          parts.push({ text: msg.content || msg.text });
+        }
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data: base64Data
+          }
+        });
+
+        return {
+          role: "user",
+          parts: parts
+        };
+      } 
+      else if (provider === "deepseek") {
+        // DeepSeek no soporta imágenes correctamente → convertimos a texto
+        return {
+          role: "user",
+          content: (msg.content || msg.text || "") + 
+                   "\n\n[Nota: Este modelo no procesa imágenes en este momento. Solo se usó el texto.]"
+        };
+      } 
+      else {
+        // Groq, xAI, Qwen → formato OpenAI compatible
+        const content = [];
+        if (msg.content || msg.text) {
+          content.push({ type: "text", text: msg.content || msg.text });
+        }
+        content.push({
+          type: "image_url",
+          image_url: { url: msg.image }
+        });
+
+        return {
+          role: "user",
+          content: content
+        };
+      }
     });
-
-    return { role: "user", parts };
-  } else {
-    // Groq / xAI
-    const content = [];
-    if (msg.content || msg.text) content.push({ type: "text", text: msg.content || msg.text });
-    content.push({ type: "image_url", image_url: { url: msg.image } });
-    return { role: "user", content };
-  }
-});
 
     const encoder = new TextEncoder();
 
@@ -87,7 +130,9 @@ const normalizedMessages = messages.map((msg: any) => {
         } catch (error: any) {
           console.error(`Error con ${provider}:`, error);
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ error: error.message || "Error al comunicarse con la IA" })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ 
+              error: error.message || "Error al comunicarse con la IA" 
+            })}\n\n`)
           );
           controller.close();
         }
