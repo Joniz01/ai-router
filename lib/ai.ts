@@ -1,12 +1,12 @@
 // lib/ai.ts
-export type Provider = "gemini" | "groq" | "xai";
+export type Provider = "gemini" | "groq" | "xai" | "qwen" | "deepseek";
 
 interface StreamOptions {
   provider: Provider;
   apiKey: string;
   model?: string;
   systemPrompt?: string;
-  messages: any[];                    // ← any porque puede venir ya normalizado
+  messages: any[];
   onChunk: (chunk: string) => void;
   temperature?: number;
   maxTokens?: number;
@@ -54,13 +54,8 @@ export async function streamAI(options: StreamOptions): Promise<string> {
     const geminiModel = model || "gemini-2.0-flash";
     url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
-    // ✅ NUEVA LÓGICA: respetar si ya viene normalizado con "parts"
     const contents = messages.map((msg: any) => {
-      if (msg.parts) {
-        // Ya viene en formato Gemini (con imagen)
-        return { role: "user", parts: msg.parts };
-      }
-      // Mensaje normal de texto
+      if (msg.parts) return { role: "user", parts: msg.parts };
       return {
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content || msg.text || "" }]
@@ -73,9 +68,16 @@ export async function streamAI(options: StreamOptions): Promise<string> {
       generationConfig: { temperature, maxOutputTokens: maxTokens },
     };
   } else {
-    // Groq y xAI (formato OpenAI)
+    // Todos los demás (Groq, xAI, Qwen, DeepSeek) usan formato OpenAI-compatible
     const isXai = provider === "xai";
-    url = isXai ? "https://api.x.ai/v1/chat/completions" : "https://api.groq.com/openai/v1/chat/completions";
+    const baseUrlMap: Record<string, string> = {
+      groq: "https://api.groq.com/openai/v1/chat/completions",
+      xai: "https://api.x.ai/v1/chat/completions",
+      qwen: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",   // Qwen (Alibaba DashScope)
+      deepseek: "https://api.deepseek.com/chat/completions"
+    };
+
+    url = baseUrlMap[provider] || "https://api.groq.com/openai/v1/chat/completions";
 
     const openaiMessages = [...messages];
     if (systemPrompt) openaiMessages.unshift({ role: "system", content: systemPrompt });
@@ -83,7 +85,7 @@ export async function streamAI(options: StreamOptions): Promise<string> {
     headers = { ...headers, Authorization: `Bearer ${apiKey}` };
 
     body = {
-      model: model || (isXai ? "grok-beta" : "llama-3.3-70b-versatile"),
+      model: model || getDefaultModel(provider),
       messages: openaiMessages,
       temperature,
       max_tokens: maxTokens,
@@ -109,4 +111,14 @@ export async function streamAI(options: StreamOptions): Promise<string> {
   }
 
   return fullResponse;
+}
+
+function getDefaultModel(provider: string): string {
+  const defaults: Record<string, string> = {
+    groq: "llama-3.3-70b-versatile",
+    xai: "grok-beta",
+    qwen: "qwen2.5-vl-72b-instruct",     // o "qwen-vl-plus" si tienes acceso
+    deepseek: "deepseek-chat"            // DeepSeek tiene soporte limitado de visión en algunos modelos
+  };
+  return defaults[provider] || "llama-3.3-70b-versatile";
 }
