@@ -77,7 +77,7 @@ export async function streamAI(options: StreamOptions): Promise<string> {
     headers = { ...headers, Authorization: `Bearer ${apiKey}` };
 
     body = {
-      model: model || "llama-3.3-70b-versatile",
+      model: model || "meta-llama/llama-4-scout-17b-16e-instruct",   // ← Modelo corregido
       messages: openaiMessages,
       temperature,
       max_tokens: maxTokens,
