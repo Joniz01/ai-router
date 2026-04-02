@@ -24,11 +24,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["gemini", "groq", "xai"].includes(provider)) {
+    if (!["gemini", "groq"].includes(provider)) {
       return new Response(
-        JSON.stringify({ 
-          error: "Proveedor no soportado. Usa: gemini, groq o xai" 
-        }),
+        JSON.stringify({ error: "Proveedor no soportado. Usa: gemini o groq" }),
         { status: 400 }
       );
     }
@@ -40,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // === NORMALIZACIÓN DE IMÁGENES ===
+    // Normalización de imágenes
     const normalizedMessages = messages.map((msg: any) => {
       if (!msg.image || typeof msg.image !== 'string' || !msg.image.startsWith('data:image')) {
         return msg;
@@ -58,9 +56,8 @@ export async function POST(request: NextRequest) {
         parts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
 
         return { role: "user", parts };
-      } 
-      else {
-        // Groq y xAI - Formato OpenAI
+      } else {
+        // Groq - Formato OpenAI
         const content = [];
         if (msg.content || msg.text) content.push({ type: "text", text: msg.content || msg.text });
         content.push({ type: "image_url", image_url: { url: msg.image } });
