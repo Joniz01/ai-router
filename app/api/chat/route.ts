@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       maxTokens = 4000,
     } = body;
 
-    // Validaciones básicas
+    // Validaciones
     if (!provider || !apiKey || !messages || !Array.isArray(messages)) {
       return new Response(
         JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey y messages" }),
@@ -24,10 +24,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["gemini", "groq", "xai", "qwen", "deepseek"].includes(provider)) {
+    if (!["gemini", "groq", "xai"].includes(provider)) {
       return new Response(
         JSON.stringify({ 
-          error: "Proveedor no soportado. Usa: gemini, groq, xai, qwen o deepseek" 
+          error: "Proveedor no soportado. Usa: gemini, groq o xai" 
         }),
         { status: 400 }
       );
@@ -40,63 +40,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // === NORMALIZACIÓN INTELIGENTE DE IMÁGENES ===
+    // === NORMALIZACIÓN DE IMÁGENES ===
     const normalizedMessages = messages.map((msg: any) => {
-      // Si no hay imagen, devolvemos el mensaje tal cual
       if (!msg.image || typeof msg.image !== 'string' || !msg.image.startsWith('data:image')) {
         return msg;
       }
 
-      const base64Data = msg.image.includes(',') 
-        ? msg.image.split(',')[1] 
-        : msg.image;
-
+      const base64Data = msg.image.includes(',') ? msg.image.split(',')[1] : msg.image;
       const mimeType = msg.image.includes('image/png') ? 'image/png' 
                       : msg.image.includes('image/jpeg') ? 'image/jpeg' 
                       : 'image/png';
 
-      // Tratamiento especial por proveedor
       if (provider === "gemini") {
-        // Formato nativo de Gemini (mejor soporte multimodal)
+        // Gemini - Formato nativo
         const parts = [];
-        if (msg.content || msg.text) {
-          parts.push({ text: msg.content || msg.text });
-        }
-        parts.push({
-          inline_data: {
-            mime_type: mimeType,
-            data: base64Data
-          }
-        });
+        if (msg.content || msg.text) parts.push({ text: msg.content || msg.text });
+        parts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
 
-        return {
-          role: "user",
-          parts: parts
-        };
-      } 
-      else if (provider === "deepseek") {
-        // DeepSeek no soporta imágenes correctamente → convertimos a texto
-        return {
-          role: "user",
-          content: (msg.content || msg.text || "") + 
-                   "\n\n[Nota: Este modelo no procesa imágenes en este momento. Solo se usó el texto.]"
-        };
+        return { role: "user", parts };
       } 
       else {
-        // Groq, xAI, Qwen → formato OpenAI compatible
+        // Groq y xAI - Formato OpenAI
         const content = [];
-        if (msg.content || msg.text) {
-          content.push({ type: "text", text: msg.content || msg.text });
-        }
-        content.push({
-          type: "image_url",
-          image_url: { url: msg.image }
-        });
+        if (msg.content || msg.text) content.push({ type: "text", text: msg.content || msg.text });
+        content.push({ type: "image_url", image_url: { url: msg.image } });
 
-        return {
-          role: "user",
-          content: content
-        };
+        return { role: "user", content };
       }
     });
 
