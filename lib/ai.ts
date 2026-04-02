@@ -68,18 +68,33 @@ export async function streamAI(options: StreamOptions): Promise<string> {
       generationConfig: { temperature, maxOutputTokens: maxTokens },
     };
   } else {
-    // Todos los demás (Groq, xAI, Qwen, DeepSeek) usan formato OpenAI-compatible
-    const isXai = provider === "xai";
+    // Proveedores OpenAI-compatible
     const baseUrlMap: Record<string, string> = {
       groq: "https://api.groq.com/openai/v1/chat/completions",
       xai: "https://api.x.ai/v1/chat/completions",
-      qwen: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",   // Qwen (Alibaba DashScope)
+      qwen: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
       deepseek: "https://api.deepseek.com/chat/completions"
     };
 
-    url = baseUrlMap[provider] || "https://api.groq.com/openai/v1/chat/completions";
+    url = baseUrlMap[provider]!;
 
-    const openaiMessages = [...messages];
+    // Filtrar imágenes para DeepSeek (no las soporta bien)
+    let processedMessages = messages;
+    if (provider === "deepseek") {
+      processedMessages = messages.map((msg: any) => {
+        if (Array.isArray(msg.content)) {
+          // Mantener solo la parte de texto
+          const textPart = msg.content.find((part: any) => part.type === "text");
+          return {
+            role: msg.role,
+            content: textPart ? textPart.text : msg.content
+          };
+        }
+        return msg;
+      });
+    }
+
+    const openaiMessages = [...processedMessages];
     if (systemPrompt) openaiMessages.unshift({ role: "system", content: systemPrompt });
 
     headers = { ...headers, Authorization: `Bearer ${apiKey}` };
@@ -117,8 +132,8 @@ function getDefaultModel(provider: string): string {
   const defaults: Record<string, string> = {
     groq: "llama-3.3-70b-versatile",
     xai: "grok-beta",
-    qwen: "qwen2.5-vl-72b-instruct",     // o "qwen-vl-plus" si tienes acceso
-    deepseek: "deepseek-chat"            // DeepSeek tiene soporte limitado de visión en algunos modelos
+    qwen: "qwen2.5-vl-72b-instruct",
+    deepseek: "deepseek-chat"
   };
   return defaults[provider] || "llama-3.3-70b-versatile";
 }
