@@ -3,103 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Router - Prueba de Visión</title>
+  <title>AI Router - Tester Multimodal</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 20px; background: #f9fafb; }
-    .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 6px 25px rgba(0,0,0,0.1); }
-    input, button { padding: 12px 20px; font-size: 16px; border-radius: 8px; margin: 8px 0; }
-    button { border: none; cursor: pointer; font-weight: 600; }
-    .btn-clear { background: #ef4444; color: white; }
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; max-width: 1000px; }
+    select, input, textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
+    button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 10px; }
     .btn-send { background: #10b981; color: white; }
-    #output { 
-      border: 1px solid #ddd; 
-      padding: 25px; 
-      min-height: 480px; 
-      background: #f8fafc; 
-      white-space: pre-wrap; 
-      line-height: 1.7; 
-      border-radius: 12px; 
-      margin-top: 20px;
-      font-size: 15.8px;
-    }
-    #imageDrop {
-      border: 3px dashed #10b981;
-      padding: 50px 20px;
-      text-align: center;
-      border-radius: 12px;
-      background: #f0fdf4;
-      min-height: 260px;
-      margin: 15px 0;
-      transition: all 0.3s;
-    }
-    #imageDrop:hover { background: #ecfdf5; }
-    #imagePreview { max-width: 100%; max-height: 420px; margin-top: 15px; border-radius: 10px; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
-    .status { font-weight: bold; color: #166534; }
+    .btn-send:hover { background: #059669; }
+    .btn-clear { background: #ef4444; color: white; }
+    #output { border: 1px solid #ddd; padding: 18px; min-height: 400px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.6; border-radius: 8px; margin-top: 15px; }
+    .success { color: #10b981; font-weight: bold; }
+    .error { color: #ef4444; font-weight: bold; }
+    label { font-weight: 600; margin-top: 12px; display: block; }
+    #imageDrop { border: 3px dashed #10b981; padding: 40px; text-align: center; border-radius: 12px; background: #f0fdf4; min-height: 200px; }
+    #imagePreview { max-width: 100%; max-height: 380px; margin: 15px auto; border-radius: 8px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🧪 Prueba de Visión - AI Router</h1>
+  <h1>🤖 AI Router - Tester Multimodal (Texto + Imágenes)</h1>
 
-    <label><strong>API Key:</strong></label>
-    <input type="password" id="apiKey" placeholder="Pega tu API Key aquí" style="width: 100%;">
+  <label>Proveedor:</label>
+  <select id="provider" onchange="updateModels()">
+    <option value="gemini">Gemini (Google) - Mejor visión</option>
+    <option value="groq">Groq (Llama 4 Scout) - Rápido</option>
+    <option value="qwen">Qwen VL</option>
+    <option value="deepseek">DeepSeek Vision</option>
+    <option value="xai">xAI / Grok</option>
+  </select>
 
-    <label><strong>Imagen (CTRL + V o arrastra aquí):</strong></label>
-    <div id="imageDrop">
-      <p><strong>📸 Pega la imagen aquí con CTRL + V</strong><br>o arrastra la imagen desde tu escritorio</p>
-      <img id="imagePreview" alt="Vista previa de la imagen">
-    </div>
+  <label>Modelo:</label>
+  <select id="model"></select>
 
-    <div>
-      <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar Imagen</button>
-      <button class="btn-send" onclick="sendToAI()">🚀 Enviar Imagen al Modelo</button>
-    </div>
+  <label>API Key:</label>
+  <input type="password" id="apiKey" placeholder="Pega tu API Key">
 
-    <h2>Respuesta del modelo:</h2>
-    <div id="output">Esperando que pegues una imagen y presiones "Enviar Imagen al Modelo"...<br><br>Prueba primero con Gemini.</div>
+  <label>System Prompt (opcional):</label>
+  <textarea id="systemPrompt" rows="2">Eres un experto analizando gráficos financieros y Open Interest.</textarea>
+
+  <label>Mensaje de texto (opcional):</label>
+  <textarea id="message" rows="3">Extrae todos los valores importantes del Open Interest que ves en esta imagen (máximos, mínimos, cambios, tendencias, etc.).</textarea>
+
+  <label>Imagen (CTRL + V o arrastra):</label>
+  <div id="imageDrop">
+    <p>📸 Pega una imagen con <strong>CTRL + V</strong> o arrastra desde tu escritorio</p>
+    <img id="imagePreview" alt="Preview">
   </div>
 
+  <div style="margin-top: 15px;">
+    <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar imagen</button>
+    <button class="btn-send" onclick="sendMessage()">🚀 Enviar Texto + Imagen (Streaming)</button>
+  </div>
+
+  <h2>Respuesta en tiempo real:</h2>
+  <div id="output">Listo para analizar imágenes...</div>
+
   <script>
-    let currentImageBase64 = null;
     const endpoint = "https://ai-router-psi.vercel.app/api/chat";
+    let currentImageBase64 = null;
 
-    // Configurar pegar y arrastrar imagen
-    function setupDropZone() {
-      const dropZone = document.getElementById("imageDrop");
+    const models = {
+      gemini: ["gemini-2.5-flash", "gemini-2.5-pro"],
+      groq: ["meta-llama/llama-4-scout-17b-16e-instruct"],
+      qwen: ["qwen2.5-vl-7b-instruct"],
+      deepseek: ["deepseek-vl-chat"],
+      xai: ["grok-beta"]
+    };
 
-      document.addEventListener('paste', (e) => {
-        const file = e.clipboardData.files[0];
-        if (file && file.type.startsWith('image/')) {
-          loadImage(file);
-        }
-      });
-
-      dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '#15803d';
-      });
-
-      dropZone.addEventListener('dragleave', () => {
-        dropZone.style.borderColor = '#10b981';
-      });
-
-      dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '#10b981';
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-          loadImage(file);
-        }
+    function updateModels() {
+      const provider = document.getElementById("provider").value;
+      const select = document.getElementById("model");
+      select.innerHTML = "";
+      models[provider].forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        select.appendChild(opt);
       });
     }
 
-    function loadImage(file) {
+    // Paste y Drag & Drop (sin cambios)
+    function setupImagePaste() {
+      const dropZone = document.getElementById("imageDrop");
+      document.addEventListener('paste', e => {
+        if (e.clipboardData.files.length) {
+          const file = e.clipboardData.files[0];
+          if (file.type.startsWith('image/')) handleImage(file);
+        }
+      });
+      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#15803d'; });
+      dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '#10b981');
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) handleImage(file);
+      });
+    }
+
+    function handleImage(file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         currentImageBase64 = e.target.result;
-        const preview = document.getElementById("imagePreview");
-        preview.src = currentImageBase64;
-        preview.style.display = "block";
+        document.getElementById("imagePreview").src = currentImageBase64;
+        document.getElementById("imagePreview").style.display = "block";
       };
       reader.readAsDataURL(file);
     }
@@ -109,42 +114,38 @@
       document.getElementById("imagePreview").style.display = "none";
     }
 
-    async function sendToAI() {
+    async function sendMessage() {
+      const provider = document.getElementById("provider").value;
+      const model = document.getElementById("model").value;
       const apiKey = document.getElementById("apiKey").value.trim();
+      const system = document.getElementById("systemPrompt").value.trim();
+      const text = document.getElementById("message").value.trim();
       const output = document.getElementById("output");
 
-      if (!apiKey) {
-        output.innerHTML = '<span style="color:red">❌ Por favor ingresa tu API Key</span>';
-        return;
-      }
-      if (!currentImageBase64) {
-        output.innerHTML = '<span style="color:red">❌ Primero pega una imagen con CTRL + V</span>';
-        return;
-      }
+      if (!apiKey) return output.innerHTML = '<span class="error">❌ Ingresa API Key</span>';
+      if (!currentImageBase64) return output.innerHTML = '<span class="error">❌ Pega una imagen</span>';
 
-      output.innerHTML = '<span class="status">Enviando imagen al modelo...</span><br><br>';
+      output.innerHTML = '<span class="success">Enviando...</span><br>';
+
+      // Formato estandarizado OpenAI-style (mejor compatibilidad)
+      const content = [];
+      if (text) content.push({ type: "text", text: text });
+      if (currentImageBase64) content.push({ type: "image_url", image_url: { url: currentImageBase64 } });
 
       const body = {
-        provider: "gemini",   // Cambia manualmente a "groq" si quieres probar el otro
-        apiKey: apiKey,
-        model: "gemini-2.5-flash",
-        messages: [{
-          role: "user",
-          content: "Analiza esta imagen con atención. Extrae todos los valores del Open Interest que observes: máximos, mínimos, neto, cambios importantes, tendencias y cualquier patrón relevante.",
-          image: currentImageBase64
-        }]
+        provider,
+        apiKey,
+        model,
+        messages: [{ role: "user", content }],
+        systemPrompt: system || undefined
       };
 
       try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
+        const res = await fetch(endpoint, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
 
         if (!res.ok) {
-          const errorText = await res.text();
-          output.innerHTML += `<span style="color:red">Error: ${errorText}</span>`;
+          const err = await res.text();
+          output.innerHTML += `<span class="error">Error ${res.status}: ${err}</span>`;
           return;
         }
 
@@ -153,33 +154,30 @@
         output.innerHTML = "";
 
         while (true) {
-          const { value, done } = await reader.read();
+          const {value, done} = await reader.read();
           if (done) {
-            output.innerHTML += '<br><br><strong>✅ Análisis completado</strong>';
+            output.innerHTML += '<br><br><span class="success">✅ Streaming completado</span>';
             break;
           }
-
-          const chunk = decoder.decode(value, { stream: true });
+          const chunk = decoder.decode(value, {stream: true});
           const lines = chunk.split('\n');
-
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
+            if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.substring(6));
-                if (data.chunk) {
-                  output.innerHTML += data.chunk.replace(/\n/g, '<br>');
-                  output.scrollTop = output.scrollHeight;
-                }
-              } catch (e) {}
+                if (data.chunk) output.innerHTML += data.chunk.replace(/\n/g, '<br>');
+                if (data.error) output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
+              } catch(e) {}
             }
           }
+          output.scrollTop = output.scrollHeight;
         }
       } catch (err) {
-        output.innerHTML += `<br><span style="color:red">Error de conexión: ${err.message}</span>`;
+        output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
       }
     }
 
-    window.onload = setupDropZone;
+    window.onload = () => { updateModels(); setupImagePaste(); };
   </script>
 </body>
 </html>
