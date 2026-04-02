@@ -11,7 +11,7 @@
     .btn-send { background: #10b981; color: white; }
     .btn-send:hover { background: #059669; }
     .btn-clear { background: #ef4444; color: white; }
-    #output { border: 1px solid #ddd; padding: 18px; min-height: 400px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.6; border-radius: 8px; margin-top: 15px; }
+    #output { border: 1px solid #ddd; padding: 18px; min-height: 400px; background: #f8fafc; white-space: pre-wrap; font-size: 15.5px; line-height: 1.6; border-radius: 8px; margin-top: 15px; overflow-y: auto; }
     .success { color: #10b981; font-weight: bold; }
     .error { color: #ef4444; font-weight: bold; }
     label { font-weight: 600; margin-top: 12px; display: block; }
@@ -21,14 +21,12 @@
   </style>
 </head>
 <body>
-  <h1>🤖 AI Router - Tester Multimodal (Texto + Imágenes)</h1>
+  <h1>🤖 AI Router - Tester Multimodal</h1>
 
   <label>Proveedor:</label>
   <select id="provider" onchange="updateModels()">
     <option value="gemini">Gemini (Google) - Mejor en visión</option>
-    <option value="groq">Groq (Llama 4 Scout)</option>
-    <option value="qwen">Qwen VL (Alibaba)</option>
-    <option value="deepseek">DeepSeek Vision</option>
+    <option value="groq">Groq (Llama 3.3 70B)</option>
     <option value="xai">xAI / Grok</option>
   </select>
 
@@ -36,13 +34,13 @@
   <select id="model"></select>
 
   <label>API Key:</label>
-  <input type="password" id="apiKey" placeholder="Pega tu API Key">
+  <input type="password" id="apiKey" placeholder="Pega tu API Key aquí">
 
   <label>System Prompt (opcional):</label>
-  <textarea id="systemPrompt" rows="2">Eres un experto analizando gráficos financieros, extrae valores, tendencias y patrones.</textarea>
+  <textarea id="systemPrompt" rows="2">Eres un asistente útil y preciso.</textarea>
 
   <label>Mensaje de texto (opcional):</label>
-  <textarea id="message" rows="3">Extrae todos los valores importantes del Open Interest que ves en esta imagen (máximos, mínimos, cambios, etc.).</textarea>
+  <textarea id="message" rows="3">Describe detalladamente lo que ves en esta imagen.</textarea>
 
   <label>Imagen (CTRL + V o arrastra):</label>
   <div id="imageDrop">
@@ -56,30 +54,47 @@
   </div>
 
   <h2>Respuesta en tiempo real:</h2>
-  <div id="output">Listo. Pega una imagen y envía.</div>
+  <div id="output">Listo para probar. Selecciona proveedor, pega tu API Key y una imagen.</div>
 
   <script>
-    const endpoint = "https://ai-router-psi.vercel.app/api/chat";
+    const endpoint = "https://ai-router-psi.vercel.app/api/chat";   // ← Cambia esta URL por la tuya si es diferente
+
     let currentImageBase64 = null;
 
     const models = {
-  gemini: ["gemini-2.0-flash", "gemini-2.5-pro"],
-  groq: ["llama-3.3-70b-versatile", "meta-llama/llama-4-scout-17b-16e-instruct"],
-  qwen: ["qwen2.5-vl-72b-instruct", "qwen-vl-plus"],
-  deepseek: ["deepseek-chat", "deepseek-vl"],   // DeepSeek visión es limitada
-  xai: ["grok-beta"]
-};
+      gemini: [
+        "gemini-2.5-flash",        // Recomendado (mejor cuota gratuita)
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-2.5-pro"
+      ],
+      groq: [
+        "llama-3.3-70b-versatile",
+        "meta-llama/llama-4-scout-17b-16e-instruct"
+      ],
+      xai: ["grok-beta"]
+    };
 
     function updateModels() {
       const provider = document.getElementById("provider").value;
       const select = document.getElementById("model");
       select.innerHTML = "";
+
       models[provider].forEach(m => {
         const opt = document.createElement("option");
         opt.value = m;
         opt.textContent = m;
         select.appendChild(opt);
       });
+
+      // Selección automática del mejor modelo gratuito
+      if (provider === "gemini") {
+        select.value = "gemini-2.5-flash";
+      } else if (provider === "groq") {
+        select.value = "llama-3.3-70b-versatile";
+      } else if (provider === "xai") {
+        select.value = "grok-beta";
+      }
     }
 
     function setupImagePaste() {
@@ -92,7 +107,10 @@
         }
       });
 
-      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#15803d'; });
+      dropZone.addEventListener('dragover', e => { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = '#15803d'; 
+      });
       dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '#10b981');
       dropZone.addEventListener('drop', e => {
         e.preventDefault();
@@ -129,12 +147,8 @@
         output.innerHTML = '<span class="error">❌ Ingresa tu API Key</span>';
         return;
       }
-      if (!currentImageBase64) {
-        output.innerHTML = '<span class="error">❌ Pega una imagen primero</span>';
-        return;
-      }
 
-      output.innerHTML = '<span class="success">Enviando imagen + texto...</span><br>';
+      output.innerHTML = '<span class="success">Enviando solicitud...</span><br>';
 
       const body = {
         provider,
@@ -143,9 +157,10 @@
         messages: [{
           role: "user",
           content: text || "Analiza esta imagen",
-          image: currentImageBase64   // ← Cambiamos a este formato simple
+          image: currentImageBase64
         }]
       };
+
       if (system) body.systemPrompt = system;
 
       try {
@@ -156,8 +171,8 @@
         });
 
         if (!res.ok) {
-          const err = await res.text();
-          output.innerHTML += `<span class="error">Error ${res.status}: ${err}</span>`;
+          const errText = await res.text();
+          output.innerHTML += `<span class="error">Error ${res.status}: ${errText}</span>`;
           return;
         }
 
@@ -192,6 +207,7 @@
       }
     }
 
+    // Inicializar
     window.onload = () => {
       updateModels();
       setupImagePaste();
