@@ -1,12 +1,12 @@
 // lib/ai.ts
-export type Provider = "gemini" | "groq" | "xai";
+export type Provider = "gemini" | "groq";
 
 interface StreamOptions {
   provider: Provider;
   apiKey: string;
   model?: string;
   systemPrompt?: string;
-  messages: any[];                    // ← any porque puede venir ya normalizado
+  messages: any[];
   onChunk: (chunk: string) => void;
   temperature?: number;
   maxTokens?: number;
@@ -51,16 +51,11 @@ export async function streamAI(options: StreamOptions): Promise<string> {
   let headers: HeadersInit = { "Content-Type": "application/json" };
 
   if (provider === "gemini") {
-    const geminiModel = model || "gemini-2.0-flash";
+    const geminiModel = model || "gemini-2.5-flash";
     url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
-    // ✅ NUEVA LÓGICA: respetar si ya viene normalizado con "parts"
     const contents = messages.map((msg: any) => {
-      if (msg.parts) {
-        // Ya viene en formato Gemini (con imagen)
-        return { role: "user", parts: msg.parts };
-      }
-      // Mensaje normal de texto
+      if (msg.parts) return { role: "user", parts: msg.parts };
       return {
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content || msg.text || "" }]
@@ -73,9 +68,8 @@ export async function streamAI(options: StreamOptions): Promise<string> {
       generationConfig: { temperature, maxOutputTokens: maxTokens },
     };
   } else {
-    // Groq y xAI (formato OpenAI)
-    const isXai = provider === "xai";
-    url = isXai ? "https://api.x.ai/v1/chat/completions" : "https://api.groq.com/openai/v1/chat/completions";
+    // Groq
+    url = "https://api.groq.com/openai/v1/chat/completions";
 
     const openaiMessages = [...messages];
     if (systemPrompt) openaiMessages.unshift({ role: "system", content: systemPrompt });
@@ -83,7 +77,7 @@ export async function streamAI(options: StreamOptions): Promise<string> {
     headers = { ...headers, Authorization: `Bearer ${apiKey}` };
 
     body = {
-      model: model || (isXai ? "grok-beta" : "llama-3.3-70b-versatile"),
+      model: model || "meta-llama/llama-4-scout-17b-16e-instruct",   // ← Modelo corregido
       messages: openaiMessages,
       temperature,
       max_tokens: maxTokens,
