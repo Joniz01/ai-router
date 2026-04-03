@@ -5,36 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MNQX Order Flow Analyst</title>
   <style>
-    body { 
-      font-family: 'Segoe UI', system-ui, sans-serif; 
-      background: #0f172a; 
-      color: #e2e8f0; 
-      margin: 0; 
-      padding: 20px;
-    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
     .container { max-width: 1280px; margin: auto; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .card { 
-      background: #1e2937; 
-      border-radius: 12px; 
-      padding: 20px; 
-      margin-bottom: 20px; 
-      border: 1px solid #334155;
-    }
-    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
-    .box { background: #0f172a; padding: 18px; border-radius: 10px; text-align: center; }
-    .label { font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
-    .value { font-size: 24px; font-weight: bold; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+    .card { background: #1e2937; border-radius: 12px; padding: 22px; margin-bottom: 20px; border: 1px solid #334155; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+    .box { background: #0f172a; padding: 20px; border-radius: 10px; text-align: center; }
+    .label { font-size: 13px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .value { font-size: 26px; font-weight: bold; margin: 0; }
     .green { color: #22c55e; }
     .red { color: #ef4444; }
-    .title { color: #60a5fa; font-size: 18px; margin-bottom: 15px; }
+    .title { color: #60a5fa; font-size: 19px; margin-bottom: 18px; }
     .conclusion { 
-      padding: 20px; 
-      border-radius: 10px; 
-      font-size: 18px; 
-      font-weight: 600; 
-      margin: 15px 0;
+      padding: 22px; border-radius: 10px; font-size: 19px; font-weight: 600; 
+      margin: 20px 0; line-height: 1.5;
     }
+    .timestamp { color: #64748b; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -42,80 +28,72 @@
     <div class="header">
       <div>
         <h1 style="margin:0; color:#60a5fa;">MNQX Order Flow Analyst</h1>
-        <p style="margin:5px 0 0 0; color:#94a3b8;">Análisis en tiempo real</p>
+        <p style="margin:4px 0 0 0; color:#94a3b8;">Análisis en tiempo real • Auto-refresh cada 60s</p>
       </div>
-      <div style="text-align:right;">
-        <span id="lastUpdate" style="color:#64748b;">Última actualización: --</span>
-      </div>
+      <div class="timestamp" id="lastUpdate">Cargando...</div>
     </div>
 
     <!-- Contexto Operativo -->
     <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h2 style="margin:0; color:#60a5fa;">CONTEXTO OPERATIVO</h2>
-        <span id="timestamp" style="color:#94a3b8;"></span>
-      </div>
-      
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <h2 class="title">CONTEXTO OPERATIVO</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
         <div>
-          <label class="label">PRECIO ACTUAL</label>
+          <div class="label">Precio Actual</div>
           <div id="precioActual" class="value">--</div>
         </div>
         <div>
-          <label class="label">TENDENCIA CUM DELTA</label>
+          <div class="label">Tendencia Cum Delta</div>
           <div id="tendencia" class="value">--</div>
         </div>
       </div>
-
       <div style="margin-top: 20px;">
-        <label class="label">NOTAS ADICIONALES</label>
-        <div id="notas" style="background:#0f172a; padding:15px; border-radius:8px; min-height:60px;">--</div>
+        <div class="label">Notas Adicionales</div>
+        <div id="notas" style="background:#0f172a; padding:16px; border-radius:8px; min-height:70px;">--</div>
       </div>
     </div>
 
-    <!-- Resultado del Análisis -->
+    <!-- Resultado Principal -->
     <div class="card">
-      <h2 style="color:#60a5fa;">RESULTADO DEL ANÁLISIS</h2>
+      <h2 class="title">RESULTADO DEL ANÁLISIS</h2>
       <div id="conclusion" class="conclusion red">
-        Cargando último análisis...
+        Esperando primer análisis...
       </div>
 
       <div class="grid">
         <div class="box">
-          <div class="label">ENTRADA</div>
+          <div class="label">Entrada</div>
           <div id="entrada" class="value green">--</div>
         </div>
         <div class="box">
-          <div class="label">STOP LOSS</div>
+          <div class="label">Stop Loss</div>
           <div id="stopLoss" class="value red">--</div>
         </div>
         <div class="box">
-          <div class="label">TARGET</div>
+          <div class="label">Target</div>
           <div id="target" class="value green">--</div>
         </div>
       </div>
     </div>
 
-    <!-- Análisis Completo -->
+    <!-- Análisis Detallado -->
     <div class="card">
-      <h2 style="color:#60a5fa;">ANÁLISIS DETALLADO</h2>
-      <div id="fullAnalysis" style="line-height:1.8; white-space: pre-wrap;"></div>
+      <h2 class="title">ANÁLISIS DETALLADO</h2>
+      <div id="fullAnalysis" style="line-height:1.85; white-space: pre-wrap; font-size: 15.2px;"></div>
     </div>
   </div>
 
   <script>
-    let lastTimestamp = "";
-
-    async function loadLatestAnalysis() {
+    async function loadLatest() {
       try {
         const res = await fetch('/api/save-latest');
+        if (!res.ok) throw new Error("No hay datos");
         const data = await res.json();
 
-        document.getElementById('timestamp').textContent = `Actualizado: ${data.timestamp || '--'}`;
+        document.getElementById('lastUpdate').textContent = `Última actualización: ${data.timestamp || '---'}`;
         document.getElementById('precioActual').textContent = data.precioActual || '--';
         document.getElementById('tendencia').textContent = data.tendencia || '--';
-        document.getElementById('notas').textContent = data.notas || 'Sin notas adicionales.';
-        
+        document.getElementById('notas').textContent = data.notas || 'Sin notas adicionales';
+
         const conclusionEl = document.getElementById('conclusion');
         conclusionEl.textContent = data.resultadoPrincipal || 'Sin análisis disponible';
         conclusionEl.className = `conclusion ${data.conclusionColor === 'green' ? 'green' : 'red'}`;
@@ -123,19 +101,18 @@
         document.getElementById('entrada').textContent = data.entrada || '--';
         document.getElementById('stopLoss').textContent = data.stopLoss || '--';
         document.getElementById('target').textContent = data.target || '--';
-        document.getElementById('fullAnalysis').innerHTML = data.fullAnalysis || 'No hay análisis detallado disponible.';
+        document.getElementById('fullAnalysis').innerHTML = data.fullAnalysis || '<em>No hay análisis detallado aún.</em>';
 
-        lastTimestamp = data.timestamp;
       } catch (e) {
-        console.error("Error cargando análisis:", e);
+        console.log("Aún no hay análisis guardado");
       }
     }
 
-    // Auto-refresh cada 60 segundos
-    setInterval(loadLatestAnalysis, 60000);
+    // Auto refresh cada 60 segundos
+    setInterval(loadLatest, 60000);
 
     // Carga inicial
-    window.onload = loadLatestAnalysis;
+    window.onload = loadLatest;
   </script>
 </body>
 </html>
