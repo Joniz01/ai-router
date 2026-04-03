@@ -1,119 +1,128 @@
 // app/api/chat/route.ts
 import { NextRequest } from 'next/server';
-import { streamAI, type Provider } from '../../../lib/ai';
+import { kv } from '@vercel/kv';
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
+async function getConfig() {
+  const geminiKeys = await kv.get<string[]>('config:gemini:keys') || [];
+  const groqKeys = await kv.get<string[]>('config:groq:keys') || [];
+  const priority = await kv.get<string[]>('config:priority') || ['gemini', 'groq'];
+  
+  return { geminiKeys, groqKeys, priority };
+}
+
+async function getCurrentIndex(provider: string): Promise<number> {
+  const index = await kv.get<number>(`fallback:${provider}:current`);
+  return index ?? 0;
+}
+
+async function setCurrentIndex(provider: string, index: number) {
+  await kv.set(`fallback:${provider}:current`, index);
+}
+
+function getKey(provider: string, index: number): string | null {
+  if (provider === 'gemini') {
+    const keys = (process.env.GEMINI_KEYS || '').split(',').filter(Boolean);
+    return keys[index % keys.length] || null;
+  } else {
+    const keys = (process.env.GROQ_KEYS || '').split(',').filter(Boolean);
+    return keys[index % keys.length] || null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const { provider: requestedProvider, model, systemPrompt, messages, temperature = 0.7, maxTokens = 4000 } = body;
 
-    const {
-      provider,
-      apiKey,
-      model,
-      systemPrompt,
-      messages,
-      temperature = 0.7,
-      maxTokens = 4000,
-    } = body;
-
-    // Validaciones
-    if (!provider || !apiKey || !messages || !Array.isArray(messages)) {
-      return new Response(
-        JSON.stringify({ error: "Faltan campos requeridos: provider, apiKey y messages" }),
-        { status: 400 }
-      );
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(JSON.stringify({ error: "El campo 'messages' es requerido" }), { status: 400 });
     }
 
-    if (!["gemini", "groq"].includes(provider)) {
-      return new Response(
-        JSON.stringify({ error: "Proveedor no soportado. Usa: gemini o groq" }),
-        { status: 400 }
-      );
+    const { geminiKeys, groqKeys, priority } = await getConfig();
+
+    if (geminiKeys.length === 0 && groqKeys.length === 0) {
+      return new Response(JSON.stringify({ error: "No hay API Keys configuradas. Agrega keys en el Dashboard /admin" }), { status: 400 });
     }
 
-    if (messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "El array messages no puede estar vacío" }),
-        { status: 400 }
-      );
-    }
+    let currentProvider = requestedProvider || priority[0];
+    let attempts = 0;
+    const maxAttempts = 20;
 
-    // Normalización de imágenes
-    const normalizedMessages = messages.map((msg: any) => {
-      if (!msg.image || typeof msg.image !== 'string' || !msg.image.startsWith('data:image')) {
-        return msg;
+    while (attempts < maxAttempts) {
+      const currentIndex = await getCurrentIndex(currentProvider);
+      let apiKey = getKey(currentProvider, currentIndex);
+
+      // Si no hay key en este proveedor, saltar al siguiente
+      if (!apiKey) {
+        const nextIndex = (priority.indexOf(currentProvider) + 1) % priority.length;
+        currentProvider = priority[nextIndex];
+        attempts++;
+        continue;
       }
 
-      const base64Data = msg.image.includes(',') ? msg.image.split(',')[1] : msg.image;
-      const mimeType = msg.image.includes('image/png') ? 'image/png' 
-                      : msg.image.includes('image/jpeg') ? 'image/jpeg' 
-                      : 'image/png';
-
-      if (provider === "gemini") {
-        // Gemini - Formato nativo
-        const parts = [];
-        if (msg.content || msg.text) parts.push({ text: msg.content || msg.text });
-        parts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
-
-        return { role: "user", parts };
-      } else {
-        // Groq - Formato OpenAI
-        const content = [];
-        if (msg.content || msg.text) content.push({ type: "text", text: msg.content || msg.text });
-        content.push({ type: "image_url", image_url: { url: msg.image } });
-
-        return { role: "user", content };
-      }
-    });
-
-    const encoder = new TextEncoder();
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          let fullResponse = "";
-
-          await streamAI({
-            provider: provider as Provider,
-            apiKey: apiKey.trim(),
-            model: model || undefined,
-            systemPrompt: systemPrompt || undefined,
-            messages: normalizedMessages,
+      try {
+        // Aquí llamamos al streamAI (necesitamos crearlo)
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {  // Placeholder - se actualizará
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: model || (currentProvider === 'groq' ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'gemini-2.5-flash'),
+            messages,
             temperature,
-            maxTokens,
-            onChunk: (chunk: string) => {
-              fullResponse += chunk;
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`)
-              );
-            },
-          });
+            max_tokens: maxTokens,
+            stream: true
+          })
+        });
 
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ done: true, fullResponse })}\n\n`)
-          );
-          controller.close();
-        } catch (error: any) {
-          console.error(`Error con ${provider}:`, error);
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ 
-              error: error.message || "Error al comunicarse con la IA" 
-            })}\n\n`)
-          );
-          controller.close();
+        if (!response.ok) {
+          const errorText = await response.text();
+          if (errorText.toLowerCase().includes('quota') || 
+              errorText.toLowerCase().includes('rate') || 
+              response.status === 429) {
+            
+            // Rotar key
+            await setCurrentIndex(currentProvider, currentIndex + 1);
+            attempts++;
+            continue;
+          }
+          throw new Error(errorText);
         }
-      },
-    });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-      },
-    });
+        // Éxito
+        await setCurrentIndex(currentProvider, currentIndex + 1);
+        
+        return new Response(response.body, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          }
+        });
+
+      } catch (error: any) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('quota') || msg.includes('rate') || msg.includes('limit') || error.status === 429) {
+          await setCurrentIndex(currentProvider, currentIndex + 1);
+          attempts++;
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        error: "Se agotaron todas las keys disponibles de Gemini y Groq. Inténtalo más tarde." 
+      }), 
+      { status: 429 }
+    );
+
   } catch (error: any) {
-    console.error("Error en /api/chat:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Error interno del servidor" }),
       { status: 500 }
