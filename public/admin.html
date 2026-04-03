@@ -20,6 +20,7 @@
     .btn-primary { background: #3b82f6; color: white; }
     .btn-send { background: #10b981; color: white; }
     .btn-clear { background: #ef4444; color: white; }
+    .btn-success { background: #10b981; color: white; }
     .key-slot { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
     .key-slot input[type="text"] { flex: 1; }
     .key-slot input[type="password"] { flex: 2; }
@@ -27,9 +28,9 @@
       border: 1px solid #d1d5db; padding: 25px; min-height: 480px; background: #f8fafc;
       white-space: pre-wrap; line-height: 1.7; border-radius: 12px; margin-top: 15px; font-size: 15.6px;
     }
-    .status { font-weight: bold; margin: 10px 0; }
-    .success { color: #10b981; }
-    .error { color: #ef4444; }
+    .status { font-weight: bold; margin: 10px 0; padding: 8px; border-radius: 6px; }
+    .success { background: #d1fae5; color: #10b981; }
+    .error { background: #fee2e2; color: #ef4444; }
   </style>
 </head>
 <body>
@@ -38,23 +39,26 @@
 
     <!-- API Keys -->
     <div class="card">
-      <h2>🔑 API Keys</h2>
+      <h2>🔑 Gestión de API Keys</h2>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
         <div>
-          <h3>Gemini Keys</h3>
+          <h3>Gemini API Keys</h3>
           <div id="gemini-keys"></div>
+          <button class="btn-primary" onclick="saveAll()">💾 Guardar Cambios en Keys</button>
         </div>
         <div>
-          <h3>Groq Keys</h3>
+          <h3>Groq API Keys</h3>
           <div id="groq-keys"></div>
+          <button class="btn-primary" onclick="saveAll()">💾 Guardar Cambios en Keys</button>
         </div>
       </div>
     </div>
 
     <!-- System Prompts -->
     <div class="card">
-      <h2>📝 System Prompts (4 predefinidos)</h2>
+      <h2>📝 System Prompts Guardados</h2>
       <div id="prompts-container"></div>
+      <button class="btn-primary" onclick="saveAll()">💾 Guardar Cambios en Prompts</button>
     </div>
 
     <!-- Tester -->
@@ -67,7 +71,7 @@
           <select id="selectedKey"></select>
         </div>
         <div>
-          <label>System Prompt</label>
+          <label>System Prompt a usar</label>
           <select id="selectedPrompt"></select>
         </div>
       </div>
@@ -95,15 +99,8 @@
     const ENDPOINT = "https://ai-router-psi.vercel.app/api/chat";
     let currentImageBase64 = null;
 
-    // Inicializar datos
     function initData() {
-      // API Keys
-      const geminiKeys = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
-      const groqKeys = JSON.parse(localStorage.getItem('groqKeys') || '[]');
-      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
-
-      // Valores por defecto si está vacío
-      if (geminiKeys.length === 0) {
+      if (!localStorage.getItem('geminiKeys')) {
         localStorage.setItem('geminiKeys', JSON.stringify([
           {name: "Gemini Principal", key: ""},
           {name: "Gemini Backup 1", key: ""},
@@ -111,7 +108,7 @@
           {name: "Gemini Backup 3", key: ""}
         ]));
       }
-      if (groqKeys.length === 0) {
+      if (!localStorage.getItem('groqKeys')) {
         localStorage.setItem('groqKeys', JSON.stringify([
           {name: "Groq Principal", key: ""},
           {name: "Groq Backup 1", key: ""},
@@ -119,7 +116,7 @@
           {name: "Groq Backup 3", key: ""}
         ]));
       }
-      if (prompts.length === 0) {
+      if (!localStorage.getItem('systemPrompts')) {
         localStorage.setItem('systemPrompts', JSON.stringify([
           {name: "Análisis Técnico", prompt: "Eres un experto en análisis técnico de gráficos financieros. Extrae valores con precisión."},
           {name: "Análisis Detallado", prompt: "Analiza la imagen con mucho detalle, explica tendencias y patrones claros."},
@@ -129,7 +126,6 @@
       }
     }
 
-    // Renderizar Keys
     function renderKeys() {
       const geminiKeys = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
       const groqKeys = JSON.parse(localStorage.getItem('groqKeys') || '[]');
@@ -155,21 +151,19 @@
       document.getElementById('groq-keys').innerHTML = html;
     }
 
-    // Renderizar Prompts
     function renderPrompts() {
       const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
       let html = '';
       prompts.forEach((item, i) => {
         html += `
-          <div style="margin-bottom:12px;">
+          <div style="margin-bottom:15px;">
             <input type="text" value="${item.name}" style="width:30%" onchange="updatePromptName(${i}, this.value)">
-            <textarea style="width:68%; margin-left:2%" rows="2" onchange="updatePromptValue(${i}, this.value)">${item.prompt}</textarea>
+            <textarea style="width:68%; margin-left:2%" rows="3" onchange="updatePromptValue(${i}, this.value)">${item.prompt}</textarea>
           </div>`;
       });
       document.getElementById('prompts-container').innerHTML = html;
     }
 
-    // Actualizar datos
     function updateKeyName(type, index, value) {
       const keys = JSON.parse(localStorage.getItem(type + 'Keys') || '[]');
       keys[index].name = value;
@@ -194,7 +188,14 @@
       localStorage.setItem('systemPrompts', JSON.stringify(prompts));
     }
 
-    // Renderizar selectores del tester
+    function saveAll() {
+      const status = document.createElement('div');
+      status.className = 'status success';
+      status.textContent = '✅ Cambios guardados correctamente';
+      document.querySelector('.container').appendChild(status);
+      setTimeout(() => status.remove(), 2500);
+    }
+
     function renderSelectors() {
       const geminiKeys = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
       const groqKeys = JSON.parse(localStorage.getItem('groqKeys') || '[]');
@@ -216,7 +217,6 @@
       document.getElementById('selectedPrompt').innerHTML = html;
     }
 
-    // Enviar prueba
     async function sendTest() {
       const keySelect = document.getElementById('selectedKey').value;
       const promptIndex = document.getElementById('selectedPrompt').value;
@@ -232,7 +232,7 @@
       const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
       const systemPrompt = prompts[promptIndex].prompt;
 
-      output.innerHTML = `<span class="status success">Enviando a ${provider.toUpperCase()}...</span><br>`;
+      output.innerHTML = `<span class="status success">Enviando a ${provider.toUpperCase()} usando "${prompts[promptIndex].name}"...</span><br>`;
 
       const body = {
         provider,
@@ -293,7 +293,6 @@
       document.getElementById("imagePreview").style.display = "none";
     }
 
-    // Setup imagen
     function setupImage() {
       const dropZone = document.getElementById("imageDrop");
       document.addEventListener('paste', e => {
@@ -318,7 +317,6 @@
       reader.readAsDataURL(file);
     }
 
-    // Inicializar todo
     window.onload = () => {
       initData();
       renderKeys();
