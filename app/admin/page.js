@@ -1,7 +1,7 @@
 // app/admin/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('keys');
@@ -35,7 +35,7 @@ export default function AdminDashboard() {
       setGroqKeys(data.groqKeys || []);
       setPriority(data.priority || ['gemini', 'groq']);
     } catch (err) {
-      alert('Error al cargar configuración');
+      alert('Error al cargar las keys');
     }
     setLoading(false);
   };
@@ -55,10 +55,10 @@ export default function AdminDashboard() {
         setMessage('✅ Configuración guardada correctamente');
         setTimeout(() => setMessage(''), 3000);
       } else {
-        alert('Error al guardar');
+        alert('Error al guardar configuración');
       }
     } catch (err) {
-      alert('Error de conexión');
+      alert('Error de conexión con Upstash');
     }
     setLoading(false);
   };
@@ -66,14 +66,13 @@ export default function AdminDashboard() {
   const addKey = (type) => {
     const inputId = type === 'gemini' ? 'geminiInput' : 'groqInput';
     const input = document.getElementById(inputId);
+    if (!input) return;
     const value = input.value.trim();
     if (!value) return;
 
-    if (type === 'gemini') {
-      setGeminiKeys([...geminiKeys, value]);
-    } else {
-      setGroqKeys([...groqKeys, value]);
-    }
+    if (type === 'gemini') setGeminiKeys([...geminiKeys, value]);
+    else setGroqKeys([...groqKeys, value]);
+
     input.value = '';
   };
 
@@ -125,6 +124,7 @@ export default function AdminDashboard() {
             <h3>Gemini Keys ({geminiKeys.length}/4)</h3>
             <input id="geminiInput" type="text" placeholder="Pega una nueva API Key de Gemini" style={{ width: '100%', padding: '12px', marginBottom: '10px' }} />
             <button onClick={() => addKey('gemini')} style={{ padding: '8px 16px' }}>Agregar Gemini Key</button>
+            
             <ul style={{ marginTop: '15px' }}>
               {geminiKeys.map((key, i) => (
                 <li key={i} style={{ margin: '8px 0', padding: '8px', background: '#f3f4f6', borderRadius: '6px' }}>
@@ -139,6 +139,7 @@ export default function AdminDashboard() {
             <h3>Groq Keys ({groqKeys.length}/5)</h3>
             <input id="groqInput" type="text" placeholder="Pega una nueva API Key de Groq" style={{ width: '100%', padding: '12px', marginBottom: '10px' }} />
             <button onClick={() => addKey('groq')} style={{ padding: '8px 16px' }}>Agregar Groq Key</button>
+            
             <ul style={{ marginTop: '15px' }}>
               {groqKeys.map((key, i) => (
                 <li key={i} style={{ margin: '8px 0', padding: '8px', background: '#f3f4f6', borderRadius: '6px' }}>
@@ -170,7 +171,7 @@ export default function AdminDashboard() {
       {activeTab === 'tester' && (
         <div>
           <h2>Tester en Vivo</h2>
-          <p>Funcionalidad de prueba disponible pronto.</p>
+          <p>El tester estará disponible pronto.</p>
         </div>
       )}
     </div>
