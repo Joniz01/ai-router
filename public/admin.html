@@ -225,7 +225,7 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // ==================== STREAMING CON EVENTSOURCE (Más estable) ====================
+    // ==================== STREAMING FINAL - Versión más estable ====================
     async function sendTest() {
       const keySelect = document.getElementById('selectedKey').value;
       const promptIndex = document.getElementById('selectedPrompt').value;
@@ -241,7 +241,7 @@
       const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
       const systemPrompt = prompts[promptIndex].prompt;
 
-      output.innerHTML = `<span class="status success">Analizando imagen con ${provider.toUpperCase()}...</span><br>`;
+      output.innerHTML = `<span class="status success">Analizando con ${provider.toUpperCase()}...</span><br>`;
 
       const body = {
         provider,
@@ -256,7 +256,6 @@
       };
 
       try {
-        // Primero hacemos POST para iniciar el análisis
         const res = await fetch(ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -265,12 +264,12 @@
 
         if (!res.ok) {
           const err = await res.text();
-          output.innerHTML += `<span class="error">Error: ${err}</span>`;
+          output.innerHTML += `<span class="error">Error al iniciar: ${err}</span>`;
           return;
         }
 
-        // Usamos EventSource para leer el streaming de forma nativa y estable
-        const eventSource = new EventSource(ENDPOINT);
+        // Usamos EventSource para leer el streaming de forma nativa
+        const eventSource = new EventSource(ENDPOINT + "?" + new URLSearchParams({ stream: "true" }));
 
         eventSource.onmessage = function(event) {
           try {
@@ -284,13 +283,11 @@
               output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
               eventSource.close();
             }
-          } catch (e) {
-            // Ignorar
-          }
+          } catch (e) {}
         };
 
         eventSource.onerror = function() {
-          output.innerHTML += '<br><span class="error">Error en la conexión de streaming</span>';
+          output.innerHTML += '<br><span class="error">Error en la conexión de streaming. Intenta de nuevo.</span>';
           eventSource.close();
         };
 
@@ -300,7 +297,7 @@
     }
 
     async function saveAsLatest() {
-      alert("Función 'Guardar como Último Análisis' pendiente de implementación completa.\n\nPrimero asegúrate de que el endpoint /api/save-latest esté creado.");
+      alert("Función 'Guardar como Último Análisis' pendiente.\n\nAsegúrate de que el endpoint /api/save-latest esté creado.");
     }
 
     function clearImage() {
