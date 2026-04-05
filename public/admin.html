@@ -231,6 +231,7 @@
       setTimeout(() => status.remove(), 2500);
     }
 
+    // ==================== STREAMING MEJORADO ====================
     async function sendTest() {
       const keySelect = document.getElementById('selectedKey').value;
       const promptIndex = document.getElementById('selectedPrompt').value;
@@ -275,6 +276,8 @@
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = "";
+
         output.innerHTML = "";
 
         while (true) {
@@ -283,17 +286,28 @@
             output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
             break;
           }
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || "";   // Mantener la línea parcial en el buffer
+
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.substring(6));
-                if (data.chunk) {
-                  output.innerHTML += data.chunk.replace(/\n/g, '<br>');
-                  output.scrollTop = output.scrollHeight;
-                }
-              } catch(e) {}
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data: ')) continue;
+
+            const dataStr = trimmed.substring(6).trim();
+            if (!dataStr || dataStr === '[DONE]') continue;
+
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.chunk) {
+                output.innerHTML += data.chunk.replace(/\n/g, '<br>');
+                output.scrollTop = output.scrollHeight;
+              } else if (data.error) {
+                output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
+              }
+            } catch (e) {
+              // Ignorar líneas que no sean JSON válido
             }
           }
         }
@@ -303,73 +317,8 @@
     }
 
     async function saveAsLatest() {
-      const keySelect = document.getElementById('selectedKey').value;
-      const promptIndex = document.getElementById('selectedPrompt').value;
-      const message = document.getElementById('message').value.trim();
-      const output = document.getElementById('output');
-
-      if (!keySelect) return alert("Selecciona una API Key");
-      if (!currentImageBase64) return alert("Pega una imagen primero");
-
-      const [provider, keyIndex] = keySelect.split(':');
-      const keys = JSON.parse(localStorage.getItem(provider + 'Keys') || '[]');
-      const apiKey = keys[keyIndex].key;
-      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
-      const systemPrompt = prompts[promptIndex].prompt;
-
-      // Primero hacemos el análisis
-      const body = {
-        provider,
-        apiKey,
-        model: provider === "gemini" ? "gemini-2.5-flash" : "meta-llama/llama-4-scout-17b-16e-instruct",
-        messages: [{
-          role: "user",
-          content: message || "Analiza esta imagen y extrae toda la información del Open Interest visible.",
-          image: currentImageBase64
-        }],
-        systemPrompt: systemPrompt
-      };
-
-      try {
-        output.innerHTML = `<span class="status success">Guardando como último análisis...</span>`;
-
-        const res = await fetch(ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
-
-        if (!res.ok) throw new Error("Error en el análisis");
-
-        // Aquí deberíamos extraer el texto completo, pero por simplicidad usamos un resumen
-        // En producción puedes mejorar esto capturando la respuesta completa
-
-        const saveBody = {
-          precioActual: "24033.75", // Temporal - puedes mejorarlo después
-          tendencia: "Bajando",
-          horarioNY: "Pre-Market (4-9:30am)",
-          notas: message || "Análisis desde panel administrativo",
-          resultadoPrincipal: "Rechazo en zona 24033-24050, presión vendedora creciente premarket",
-          conclusionColor: "red",
-          entrada: "24015.00",
-          stopLoss: "24050.00",
-          target: "23945.00",
-          rr: "1:2.0",
-          fullAnalysis: "Análisis realizado desde el panel administrativo con IA."
-        };
-
-        await fetch('/api/save-latest', {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(saveBody)
-        });
-
-        output.innerHTML += '<br><span class="success">✅ Análisis guardado como último análisis público</span>';
-        alert("¡Análisis guardado correctamente en la página pública!");
-
-      } catch (err) {
-        output.innerHTML += `<br><span class="error">Error: ${err.message}</span>`;
-      }
+      // ... (por ahora lo dejamos simple, puedes mejorarlo después)
+      alert("Función 'Guardar como Último Análisis' aún en desarrollo.\n\nPrimero asegúrate de que el endpoint /api/save-latest esté creado.");
     }
 
     function clearImage() {
