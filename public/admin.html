@@ -225,7 +225,7 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // Streaming mejorado
+    // ==================== STREAMING CON EVENTSOURCE (Más estable) ====================
     async function sendTest() {
       const keySelect = document.getElementById('selectedKey').value;
       const promptIndex = document.getElementById('selectedPrompt').value;
@@ -241,7 +241,7 @@
       const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
       const systemPrompt = prompts[promptIndex].prompt;
 
-      output.innerHTML = `<span class="status success">Analizando con ${provider.toUpperCase()}...</span><br>`;
+      output.innerHTML = `<span class="status success">Analizando imagen con ${provider.toUpperCase()}...</span><br>`;
 
       const body = {
         provider,
@@ -256,6 +256,7 @@
       };
 
       try {
+        // Primero hacemos POST para iniciar el análisis
         const res = await fetch(ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -268,50 +269,38 @@
           return;
         }
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
+        // Usamos EventSource para leer el streaming de forma nativa y estable
+        const eventSource = new EventSource(ENDPOINT);
 
-        output.innerHTML = "";
-
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-
-          let boundary = buffer.indexOf('\n\n');
-          while (boundary !== -1) {
-            const event = buffer.substring(0, boundary);
-            buffer = buffer.substring(boundary + 2);
-
-            if (event.startsWith('data: ')) {
-              const dataStr = event.substring(6).trim();
-              if (dataStr && dataStr !== '[DONE]') {
-                try {
-                  const data = JSON.parse(dataStr);
-                  if (data.chunk) {
-                    output.innerHTML += data.chunk.replace(/\n/g, '<br>');
-                    output.scrollTop = output.scrollHeight;
-                  } else if (data.error) {
-                    output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
-                  }
-                } catch (e) {}
-              }
+        eventSource.onmessage = function(event) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.chunk) {
+              output.innerHTML += data.chunk.replace(/\n/g, '<br>');
+              output.scrollTop = output.scrollHeight;
+            } else if (data.error) {
+              output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
+            } else if (data.done) {
+              output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
+              eventSource.close();
             }
-            boundary = buffer.indexOf('\n\n');
+          } catch (e) {
+            // Ignorar
           }
-        }
+        };
+
+        eventSource.onerror = function() {
+          output.innerHTML += '<br><span class="error">Error en la conexión de streaming</span>';
+          eventSource.close();
+        };
+
       } catch (err) {
         output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
       }
     }
 
     async function saveAsLatest() {
-      alert("Función 'Guardar como Último Análisis' pendiente.\n\nPrimero asegúrate de que el endpoint /api/save-latest esté creado.");
+      alert("Función 'Guardar como Último Análisis' pendiente de implementación completa.\n\nPrimero asegúrate de que el endpoint /api/save-latest esté creado.");
     }
 
     function clearImage() {
