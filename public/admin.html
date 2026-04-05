@@ -231,7 +231,7 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // ==================== STREAMING CON EVENTSOURCE (Opción 2) ====================
+    // ==================== STREAMING MEJORADO ====================
     async function sendTest() {
       const keySelect = document.getElementById('selectedKey').value;
       const promptIndex = document.getElementById('selectedPrompt').value;
@@ -270,17 +270,10 @@
 
         if (!res.ok) {
           const err = await res.text();
-          output.innerHTML += `<span class="error">Error al iniciar streaming: ${err}</span>`;
+          output.innerHTML += `<span class="error">Error: ${err}</span>`;
           return;
         }
 
-        // Usamos EventSource para leer el SSE de forma nativa y más estable
-        const eventSourceUrl = ENDPOINT + "?" + new URLSearchParams({
-          provider: provider,
-          // Nota: EventSource no permite body en POST fácilmente, así que usamos un truco temporal
-        });
-
-        // Para simplificar, usamos fetch + reader con mejor buffer
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
@@ -295,8 +288,8 @@
           }
 
           buffer += decoder.decode(value, { stream: true });
-          let lines = buffer.split('\n');
-          buffer = lines.pop() || "";
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || "";   // Mantener la línea parcial en el buffer
 
           for (const line of lines) {
             const trimmed = line.trim();
@@ -314,7 +307,7 @@
                 output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
               }
             } catch (e) {
-              // Ignorar JSON inválido
+              // Ignorar líneas que no sean JSON válido
             }
           }
         }
@@ -324,7 +317,8 @@
     }
 
     async function saveAsLatest() {
-      alert("Función 'Guardar como Último Análisis' pendiente de implementación.\n\nPrimero asegúrate de que el endpoint /api/save-latest esté creado.");
+      // ... (por ahora lo dejamos simple, puedes mejorarlo después)
+      alert("Función 'Guardar como Último Análisis' aún en desarrollo.\n\nPrimero asegúrate de que el endpoint /api/save-latest esté creado.");
     }
 
     function clearImage() {
