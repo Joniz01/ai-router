@@ -225,7 +225,7 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // ==================== STREAMING FINAL - Versión más estable ====================
+    // ==================== STREAMING MEJORADO - Versión estable ====================
     async function sendTest() {
       const keySelect = document.getElementById('selectedKey').value;
       const promptIndex = document.getElementById('selectedPrompt').value;
@@ -268,29 +268,44 @@
           return;
         }
 
-        // Usamos EventSource para leer el streaming de forma nativa
-        const eventSource = new EventSource(ENDPOINT + "?" + new URLSearchParams({ stream: "true" }));
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-        eventSource.onmessage = function(event) {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.chunk) {
-              output.innerHTML += data.chunk.replace(/\n/g, '<br>');
-              output.scrollTop = output.scrollHeight;
-            } else if (data.error) {
-              output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
-            } else if (data.done) {
-              output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
-              eventSource.close();
+        output.innerHTML = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Procesar eventos completos
+          let pos = buffer.indexOf('\n\n');
+          while (pos !== -1) {
+            const event = buffer.substring(0, pos);
+            buffer = buffer.substring(pos + 2);
+
+            if (event.startsWith('data: ')) {
+              const dataStr = event.substring(6).trim();
+              if (dataStr && dataStr !== '[DONE]') {
+                try {
+                  const data = JSON.parse(dataStr);
+                  if (data.chunk) {
+                    output.innerHTML += data.chunk.replace(/\n/g, '<br>');
+                    output.scrollTop = output.scrollHeight;
+                  } else if (data.error) {
+                    output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
+                  }
+                } catch (e) {}
+              }
             }
-          } catch (e) {}
-        };
-
-        eventSource.onerror = function() {
-          output.innerHTML += '<br><span class="error">Error en la conexión de streaming. Intenta de nuevo.</span>';
-          eventSource.close();
-        };
-
+            pos = buffer.indexOf('\n\n');
+          }
+        }
       } catch (err) {
         output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
       }
