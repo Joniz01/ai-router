@@ -82,7 +82,7 @@
       </div>
     </div>
 
-    <!-- Pestaña Analizador - Opción A -->
+    <!-- Pestaña Analizador -->
     <div id="panel-tester" style="display: none;">
       <div class="card">
         <h2>🧪 Analizador de Imágenes por IA</h2>
@@ -123,7 +123,7 @@
 
   <script>
     const ENDPOINT = "https://ai-router-psi.vercel.app/api/chat";
-    let currentImages = []; // Array de base64 strings
+    let currentImages = [];
 
     function switchTab(tab) {
       document.getElementById('panel-config').style.display = tab === 0 ? 'block' : 'none';
@@ -134,18 +134,14 @@
     function initData() {
       if (!localStorage.getItem('geminiKeys')) {
         localStorage.setItem('geminiKeys', JSON.stringify([
-          {name: "Gemini Principal", key: ""},
-          {name: "Gemini Backup 1", key: ""},
-          {name: "Gemini Backup 2", key: ""},
-          {name: "Gemini Backup 3", key: ""}
+          {name: "Gemini Principal", key: ""}, {name: "Gemini Backup 1", key: ""},
+          {name: "Gemini Backup 2", key: ""}, {name: "Gemini Backup 3", key: ""}
         ]));
       }
       if (!localStorage.getItem('groqKeys')) {
         localStorage.setItem('groqKeys', JSON.stringify([
-          {name: "Groq Principal", key: ""},
-          {name: "Groq Backup 1", key: ""},
-          {name: "Groq Backup 2", key: ""},
-          {name: "Groq Backup 3", key: ""}
+          {name: "Groq Principal", key: ""}, {name: "Groq Backup 1", key: ""},
+          {name: "Groq Backup 2", key: ""}, {name: "Groq Backup 3", key: ""}
         ]));
       }
       if (!localStorage.getItem('systemPrompts')) {
@@ -161,7 +157,6 @@
     function renderKeys() {
       const geminiKeys = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
       const groqKeys = JSON.parse(localStorage.getItem('groqKeys') || '[]');
-
       let html = '';
       geminiKeys.forEach((item, i) => {
         html += `<div class="key-slot">
@@ -241,7 +236,7 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // ==================== GESTIÓN DE IMÁGENES (Opción A) ====================
+    // ==================== GESTIÓN DE IMÁGENES ====================
     function renderImages() {
       const grid = document.getElementById('imageGrid');
       const countEl = document.getElementById('imageCount');
@@ -305,7 +300,7 @@
         messages: [{
           role: "user",
           content: message || "Analiza estas imágenes y extrae toda la información relevante.",
-          images: currentImages   // Enviamos array de imágenes
+          images: currentImages
         }],
         systemPrompt: systemPrompt
       };
@@ -365,17 +360,47 @@
     }
 
     async function saveAsLatest() {
-      const outputText = document.getElementById('output').innerText || '';
-      if (!outputText || outputText.includes("Selecciona una Key")) {
-        alert("Primero realiza un análisis para poder guardarlo.");
+      const outputDiv = document.getElementById('output');
+      const outputText = outputDiv.innerText || outputDiv.textContent || '';
+
+      if (!outputText || outputText.includes("Selecciona una Key") || outputText.includes("Analizando")) {
+        alert("Primero realiza un análisis completo para poder guardarlo.");
         return;
       }
 
-      alert("✅ Análisis guardado como Último Análisis.\n\nLa respuesta se mantiene visible para que puedas verificarla.");
-      // Aquí más adelante conectarás con /api/save-latest
+      // Datos de ejemplo - puedes mejorar esto después
+      const dataToSave = {
+        precioActual: "23412.50",
+        tendencia: "Alcista",
+        notasAdicionales: "Análisis basado en Order Flow y múltiples imágenes",
+        resultadoPrincipal: "Sesgo alcista detectado",
+        entrada: "23450",
+        stopLoss: "23320",
+        target: "23600",
+        analisisDetallado: outputText
+      };
+
+      try {
+        const res = await fetch('/api/save-latest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataToSave)
+        });
+
+        if (res.ok) {
+          const status = document.createElement('div');
+          status.className = 'status success';
+          status.textContent = '✅ Análisis guardado correctamente en results.html';
+          document.body.appendChild(status);
+          setTimeout(() => status.remove(), 3000);
+        } else {
+          alert("Error al guardar el análisis");
+        }
+      } catch (err) {
+        alert("Error de conexión: " + err.message);
+      }
     }
 
-    // Setup drag & paste
     function setupImage() {
       const dropZone = document.getElementById("imageDrop");
 
