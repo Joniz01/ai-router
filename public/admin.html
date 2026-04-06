@@ -5,54 +5,104 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Router - Panel Administrativo</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #f4f4f5; }
-    .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
-    .card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 25px; }
-    h1 { margin: 0 0 30px 0; color: #1f2937; }
-    .tabs { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 25px; }
-    .tab { padding: 14px 28px; cursor: pointer; font-weight: 600; font-size: 16px; border-bottom: 4px solid transparent; color: #6b7280; }
-    .tab.active { border-bottom: 4px solid #10b981; color: #10b981; font-weight: 700; }
-    label { font-weight: 600; display: block; margin: 12px 0 6px; color: #374151; }
+    body { 
+      font-family: system-ui, Arial, sans-serif; 
+      margin: 0; 
+      background: #f4f4f5; 
+    }
+    .container { 
+      max-width: 1200px; 
+      margin: 20px auto; 
+      padding: 20px; 
+    }
+    .card { 
+      background: white; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+      padding: 24px; 
+      margin-bottom: 25px; 
+    }
+    h1 { 
+      margin: 0 0 30px 0; 
+      color: #1f2937; 
+    }
+    .tabs { 
+      display: flex; 
+      border-bottom: 2px solid #e5e7eb; 
+      margin-bottom: 25px; 
+    }
+    .tab { 
+      padding: 14px 28px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      font-size: 16px; 
+      border-bottom: 4px solid transparent; 
+      color: #6b7280;
+    }
+    .tab.active { 
+      border-bottom: 4px solid #10b981; 
+      color: #10b981; 
+      font-weight: 700;
+    }
+    label { 
+      font-weight: 600; 
+      display: block; 
+      margin: 12px 0 6px; 
+      color: #374151; 
+    }
     input[type="text"], input[type="password"], textarea, select {
-      width: 100%; padding: 11px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px;
+      width: 100%; 
+      padding: 11px; 
+      border: 1px solid #d1d5db; 
+      border-radius: 8px; 
+      font-size: 15px;
     }
     button {
-      padding: 11px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 10px;
+      padding: 11px 20px; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      margin-right: 10px;
     }
     .btn-primary { background: #3b82f6; color: white; }
     .btn-send { background: #10b981; color: white; }
     .btn-clear { background: #ef4444; color: white; }
     .btn-save-last { background: #8b5cf6; color: white; }
-    .key-slot { display: flex; gap: 12px; margin-bottom: 14px; align-items: center; }
+    .key-slot { 
+      display: flex; 
+      gap: 12px; 
+      margin-bottom: 14px; 
+      align-items: center; 
+    }
     .key-slot input[type="text"] { flex: 1; }
     .key-slot input[type="password"] { flex: 2; }
     #output {
-      border: 1px solid #d1d5db; padding: 25px; min-height: 520px; background: #f8fafc;
-      white-space: pre-wrap; line-height: 1.75; border-radius: 12px; margin-top: 15px; font-size: 15.8px;
+      border: 1px solid #d1d5db; 
+      padding: 25px; 
+      min-height: 500px; 
+      background: #f8fafc;
+      white-space: pre-wrap; 
+      line-height: 1.75; 
+      border-radius: 12px; 
+      margin-top: 15px; 
+      font-size: 15.8px;
     }
-    .status { font-weight: bold; margin: 12px 0; padding: 10px; border-radius: 8px; }
+    .status { 
+      font-weight: bold; 
+      margin: 12px 0; 
+      padding: 10px; 
+      border-radius: 8px; 
+    }
     .success { background: #d1fae5; color: #10b981; }
     .error { background: #fee2e2; color: #ef4444; }
-    .image-grid { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
-    .image-thumb {
-      position: relative; width: 160px; height: 120px; border: 2px solid #10b981; border-radius: 8px; overflow: hidden;
-    }
-    .image-thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .remove-btn {
-      position: absolute; top: 6px; right: 6px; background: #ef4444; color: white; border: none; 
-      width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 22px;
-    }
-    .drop-zone {
-      border: 3px dashed #10b981; padding: 40px; text-align: center; border-radius: 12px; 
-      background: #f0fdf4; min-height: 180px; transition: all 0.3s;
-    }
-    .drop-zone.dragover { background: #d1fae5; border-color: #059669; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>⚙️ AI Router - Panel Administrativo</h1>
 
+    <!-- Pestañas -->
     <div class="tabs">
       <div class="tab active" onclick="switchTab(0)" id="tab-config">Configuración</div>
       <div class="tab" onclick="switchTab(1)" id="tab-tester">Analizador de Imágenes por IA</div>
@@ -99,31 +149,29 @@
         </div>
 
         <label>Mensaje adicional (opcional)</label>
-        <textarea id="message" rows="3" placeholder="Ej: Extrae los valores más importantes del Open Interest..."></textarea>
+        <textarea id="message" rows="3" placeholder="Ej: Analiza esta imagen siguiendo exactamente la estructura del system prompt..."></textarea>
 
-        <label>Imágenes para analizar (máximo 3)</label>
-        <div id="imageDrop" class="drop-zone">
-          <p><strong>📸 Pega las imágenes aquí con CTRL + V</strong><br>o arrastra desde tu escritorio</p>
+        <label>Imagen para analizar (CTRL + V o arrastra)</label>
+        <div id="imageDrop" style="border: 3px dashed #10b981; padding: 50px; text-align: center; border-radius: 12px; background: #f0fdf4; min-height: 280px;">
+          <p><strong>📸 Pega la imagen aquí con CTRL + V</strong><br>o arrastra desde tu escritorio</p>
+          <img id="imagePreview" style="max-width:100%; max-height:420px; display:none; border-radius:10px; margin-top:15px;" alt="preview">
         </div>
 
-        <div class="image-grid" id="imageGrid"></div>
-        <p style="margin: 8px 0 0 0; font-size: 14px; color: #666;" id="imageCount">Imágenes cargadas: 0/3</p>
-
         <div style="margin-top: 25px;">
-          <button class="btn-clear" onclick="clearAll()">🗑️ Limpiar Análisis</button>
-          <button class="btn-send" onclick="sendTest()">🚀 Analizar Imagen(es) con IA</button>
+          <button class="btn-clear" onclick="clearImage()">🗑️ Limpiar Imagen</button>
+          <button class="btn-send" onclick="sendTest()">🚀 Analizar Imagen con IA</button>
           <button class="btn-save-last" onclick="saveAsLatest()">💾 Guardar como Último Análisis</button>
         </div>
       </div>
 
       <h2>Respuesta del modelo:</h2>
-      <div id="output">Selecciona una Key y un System Prompt, agrega hasta 3 imágenes y analiza.</div>
+      <div id="output">Selecciona una Key y un System Prompt, pega una imagen y analiza.</div>
     </div>
   </div>
 
   <script>
     const ENDPOINT = "https://ai-router-psi.vercel.app/api/chat";
-    let currentImages = [];
+    let currentImageBase64 = null;
 
     function switchTab(tab) {
       document.getElementById('panel-config').style.display = tab === 0 ? 'block' : 'none';
@@ -150,10 +198,9 @@
       }
       if (!localStorage.getItem('systemPrompts')) {
         localStorage.setItem('systemPrompts', JSON.stringify([
-          {name: "Análisis Técnico", prompt: "Eres un experto en análisis técnico de gráficos financieros. Extrae valores con precisión."},
-          {name: "Análisis Detallado", prompt: "Analiza la imagen con mucho detalle, explica tendencias y patrones claros."},
-          {name: "Modo Simple", prompt: "Explica de forma clara y sencilla lo que ves en la imagen."},
-          {name: "Modo Trading", prompt: "Actúa como trader profesional. Analiza Open Interest y posibles implicaciones."}
+          {name: "MNQ Order Flow Analyst", prompt: "Eres MNQ Order Flow Analyst..."}, // Puedes pegar tu prompt completo aquí
+          {name: "Análisis Técnico", prompt: "Eres un experto en análisis técnico de gráficos financieros."},
+          {name: "Análisis Detallado", prompt: "Analiza la imagen con mucho detalle."}
         ]));
       }
     }
@@ -200,8 +247,12 @@
       const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
 
       let html = '<option value="">-- Selecciona una Key --</option>';
-      geminiKeys.forEach((k, i) => { if (k.key) html += `<option value="gemini:${i}">Gemini - ${k.name}</option>`; });
-      groqKeys.forEach((k, i) => { if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; });
+      geminiKeys.forEach((k, i) => { 
+        if (k.key) html += `<option value="gemini:${i}">Gemini - ${k.name}</option>`; 
+      });
+      groqKeys.forEach((k, i) => { 
+        if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; 
+      });
       document.getElementById('selectedKey').innerHTML = html;
 
       html = '';
@@ -241,224 +292,143 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // ==================== GESTIÓN DE IMÁGENES ====================
-    function renderImages() {
-      const grid = document.getElementById('imageGrid');
-      const countEl = document.getElementById('imageCount');
-      grid.innerHTML = '';
-
-      currentImages.forEach((base64, index) => {
-        const div = document.createElement('div');
-        div.className = 'image-thumb';
-        div.innerHTML = `
-          <img src="${base64}" alt="imagen">
-          <button class="remove-btn" onclick="removeImage(${index})">×</button>
-        `;
-        grid.appendChild(div);
-      });
-      countEl.textContent = `Imágenes cargadas: ${currentImages.length}/3`;
-    }
-
-    function removeImage(index) {
-      currentImages.splice(index, 1);
-      renderImages();
-    }
-
-    function clearAll() {
-      currentImages = [];
-      document.getElementById('output').innerHTML = 'Selecciona una Key y un System Prompt, agrega hasta 3 imágenes y analiza.';
-      renderImages();
-    }
-
-    function addImage(base64) {
-      if (currentImages.length >= 3) {
-        alert("Máximo 3 imágenes permitidas.");
-        return;
-      }
-      currentImages.push(base64);
-      renderImages();
-    }
-
-// ==================== STREAMING MEJORADO - Especialmente para Gemini con múltiples imágenes ====================
-async function sendTest() {
-  const keySelect = document.getElementById('selectedKey').value;
-  const promptIndex = document.getElementById('selectedPrompt').value;
-  const userMessageText = document.getElementById('message').value.trim();
-  const output = document.getElementById('output');
-
-  if (!keySelect) return output.innerHTML = '<span class="error">Selecciona una API Key</span>';
-  if (currentImages.length === 0) return output.innerHTML = '<span class="error">Agrega al menos una imagen</span>';
-
-  const [provider, keyIndex] = keySelect.split(':');
-  const keys = JSON.parse(localStorage.getItem(provider + 'Keys') || '[]');
-  const apiKey = keys[keyIndex].key;
-  const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
-  const systemPrompt = prompts[promptIndex].prompt;
-
-  output.innerHTML = `<span class="status success">Analizando con ${provider.toUpperCase()}...</span><br>`;
-
-  // Prompt mucho más estructurado y claro (especialmente para Gemini)
-  let promptBase = userMessageText || 
-    `Eres un analista profesional de Order Flow y gráficos financieros. 
-     Analiza con mucha atención las ${currentImages.length} imágenes proporcionadas. 
-     Son capturas del mismo instrumento (MNQ / MNQX) en diferentes paneles o timeframes.
-
-     Extrae con precisión los siguientes datos de TODAS las imágenes:
-     - Niveles de precio importantes (soporte, resistencia, high, low, open, close)
-     - Valores de Open Interest (máximos, mínimos, net)
-     - Delta, Stacked Liquidity, Bookmap, Footprint, GEXBOT si están visibles
-     - Cualquier número o nivel marcado en los gráficos
-
-     Compara la información entre las imágenes y proporciona los valores más consistentes y actualizados.
-     Sé extremadamente preciso con los números. No inventes datos.`;
-
-  // Construcción del mensaje según proveedor
-  let userMessage = { role: "user" };
-
-  if (provider === "gemini") {
-    userMessage.content = promptBase;
-    userMessage.images = currentImages;           // Gemini acepta array de imágenes
-  } else {
-    // Groq - formato OpenAI
-    userMessage.content = [{ type: "text", text: promptBase }];
-    currentImages.forEach(imgBase64 => {
-      userMessage.content.push({
-        type: "image_url",
-        image_url: { url: imgBase64 }
-      });
-    });
-  }
-
-  const body = {
-    provider,
-    apiKey,
-    model: provider === "gemini" ? "gemini-2.5-flash" : "meta-llama/llama-4-scout-17b-16e-instruct",
-    messages: [userMessage],
-    systemPrompt: systemPrompt
-  };
-
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      output.innerHTML += `<span class="error">Error al iniciar: ${err}</span>`;
-      return;
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    output.innerHTML = "";
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) {
-        output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
-        break;
-      }
-
-      buffer += decoder.decode(value, { stream: true });
-
-      let pos;
-      while ((pos = buffer.indexOf('\n\n')) !== -1) {
-        const event = buffer.substring(0, pos);
-        buffer = buffer.substring(pos + 2);
-
-        if (event.startsWith('data: ')) {
-          const dataStr = event.substring(6).trim();
-          if (dataStr && dataStr !== '[DONE]') {
-            try {
-              const data = JSON.parse(dataStr);
-              if (data.chunk) {
-                output.innerHTML += data.chunk.replace(/\n/g, '<br>');
-                output.scrollTop = output.scrollHeight;
-              } else if (data.error) {
-                output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
-              }
-            } catch (e) {}
-          }
-        }
-      }
-    }
-  } catch (err) {
-    output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
-  }
-}
-
+    // ==================== FUNCIÓN CORREGIDA ====================
     async function saveAsLatest() {
-      const outputText = document.getElementById('output').innerText || document.getElementById('output').textContent || '';
+      const keySelect = document.getElementById('selectedKey').value;
+      const promptIndex = document.getElementById('selectedPrompt').value;
+      const message = document.getElementById('message').value.trim();
+      const output = document.getElementById('output');
 
-      if (!outputText || outputText.includes("Selecciona una Key") || outputText.includes("Analizando")) {
-        alert("Primero realiza un análisis completo para poder guardarlo.");
-        return;
-      }
+      if (!keySelect) return alert("❌ Selecciona una API Key");
+      if (!currentImageBase64) return alert("❌ Pega una imagen primero");
 
-      const dataToSave = {
-        precioActual: "23412.50",
-        tendencia: "Alcista",
-        notasAdicionales: "Análisis realizado con múltiples imágenes",
-        resultadoPrincipal: "Sesgo alcista detectado",
-        entrada: "23450",
-        stopLoss: "23320",
-        target: "23600",
-        analisisDetallado: outputText
+      const [provider, keyIndex] = keySelect.split(':');
+      const keys = JSON.parse(localStorage.getItem(provider + 'Keys') || '[]');
+      const apiKey = keys[keyIndex]?.key;
+
+      if (!apiKey) return alert("❌ La API Key seleccionada está vacía");
+
+      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
+      const systemPrompt = prompts[promptIndex]?.prompt || "Analiza esta imagen siguiendo la estructura del system prompt.";
+
+      output.innerHTML = `<span class="status success">🔄 Analizando imagen con ${provider.toUpperCase()}...</span>`;
+
+      const body = {
+        provider,
+        apiKey,
+        model: provider === "gemini" ? "gemini-2.5-flash" : "llama-3.3-70b-versatile",
+        messages: [{
+          role: "user",
+          content: message || "Analiza esta imagen siguiendo exactamente la estructura del system prompt.",
+          image: currentImageBase64
+        }],
+        systemPrompt: systemPrompt
       };
 
       try {
-        const res = await fetch('/api/save-latest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataToSave)
+        const res = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
         });
 
-        if (res.ok) {
-          const status = document.createElement('div');
-          status.className = 'status success';
-          status.textContent = '✅ Análisis guardado correctamente en results.html';
-          document.body.appendChild(status);
-          setTimeout(() => status.remove(), 3000);
-        } else {
-          alert("Error al guardar el análisis");
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Error ${res.status}: ${errText}`);
         }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullResponse = "";
+
+        output.innerHTML = "<span class='status success'>Recibiendo respuesta de la IA...</span><br>";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                if (data.chunk) {
+                  fullResponse += data.chunk;
+                  output.innerHTML += data.chunk.replace(/\n/g, '<br>');
+                  output.scrollTop = output.scrollHeight;
+                }
+                if (data.done && data.fullResponse) {
+                  fullResponse = data.fullResponse;
+                }
+              } catch (e) {}
+            }
+          }
+        }
+
+        output.innerHTML += '<br><br><span class="success">✅ Análisis completado. Guardando como último análisis...</span>';
+
+        // Guardar en results.html
+        const saveBody = {
+          fullAnalysis: fullResponse,
+          precioActual: "--",
+          tendencia: "--",
+          notasAdicionales: message || "Análisis desde panel administrativo"
+        };
+
+        const saveRes = await fetch('/api/save-latest', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(saveBody)
+        });
+
+        if (saveRes.ok) {
+          output.innerHTML += '<br><span class="success">✅ Guardado correctamente en results.html</span>';
+          alert("¡Éxito!\n\nEl análisis ha sido guardado correctamente en results.html");
+        } else {
+          throw new Error("No se pudo guardar el análisis");
+        }
+
       } catch (err) {
-        alert("Error de conexión: " + err.message);
+        console.error(err);
+        output.innerHTML += `<br><span class="error">❌ Error: ${err.message}</span>`;
+        alert("Error: " + err.message);
       }
+    }
+
+    function clearImage() {
+      currentImageBase64 = null;
+      document.getElementById("imagePreview").style.display = "none";
     }
 
     function setupImage() {
       const dropZone = document.getElementById("imageDrop");
-
       document.addEventListener('paste', e => {
         const file = e.clipboardData.files[0];
-        if (file && file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = ev => addImage(ev.target.result);
-          reader.readAsDataURL(file);
-        }
+        if (file && file.type.startsWith('image/')) loadImage(file);
       });
-
       dropZone.addEventListener('drop', e => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = ev => addImage(ev.target.result);
-          reader.readAsDataURL(file);
-        }
+        if (file && file.type.startsWith('image/')) loadImage(file);
       });
+      dropZone.addEventListener('dragover', e => e.preventDefault());
+    }
 
-      dropZone.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-      });
-      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-      dropZone.addEventListener('drop', () => dropZone.classList.remove('dragover'));
+    function loadImage(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        currentImageBase64 = e.target.result;
+        document.getElementById("imagePreview").src = currentImageBase64;
+        document.getElementById("imagePreview").style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Funciones auxiliares
+    function sendTest() {
+      alert("Usa el botón 'Guardar como Último Análisis' para guardar en results.html");
     }
 
     window.onload = () => {
