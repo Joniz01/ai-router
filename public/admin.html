@@ -279,7 +279,7 @@
       renderImages();
     }
 
-// ==================== STREAMING MEJORADO (con mejor prompt para múltiples imágenes) ====================
+// ==================== STREAMING MEJORADO - Especialmente para Gemini con múltiples imágenes ====================
 async function sendTest() {
   const keySelect = document.getElementById('selectedKey').value;
   const promptIndex = document.getElementById('selectedPrompt').value;
@@ -297,20 +297,27 @@ async function sendTest() {
 
   output.innerHTML = `<span class="status success">Analizando con ${provider.toUpperCase()}...</span><br>`;
 
-  // Prompt mejorado según cantidad de imágenes
+  // Prompt mucho más estructurado y claro (especialmente para Gemini)
   let promptBase = userMessageText || 
-    (currentImages.length === 1 
-      ? "Analiza esta imagen con mucha atención y extrae todos los niveles de precio, Open Interest, soportes, resistencias y cualquier dato numérico visible con precisión."
-      : `Analiza estas ${currentImages.length} imágenes con mucha atención. 
-         Son gráficos del mismo instrumento (MNQX / MNQ). Extrae los niveles de precio, Open Interest, Delta, liquidez y cualquier dato numérico visible en todas las imágenes. 
-         Compara los datos entre las imágenes y proporciona los valores más consistentes y actualizados.`);
+    `Eres un analista profesional de Order Flow y gráficos financieros. 
+     Analiza con mucha atención las ${currentImages.length} imágenes proporcionadas. 
+     Son capturas del mismo instrumento (MNQ / MNQX) en diferentes paneles o timeframes.
+
+     Extrae con precisión los siguientes datos de TODAS las imágenes:
+     - Niveles de precio importantes (soporte, resistencia, high, low, open, close)
+     - Valores de Open Interest (máximos, mínimos, net)
+     - Delta, Stacked Liquidity, Bookmap, Footprint, GEXBOT si están visibles
+     - Cualquier número o nivel marcado en los gráficos
+
+     Compara la información entre las imágenes y proporciona los valores más consistentes y actualizados.
+     Sé extremadamente preciso con los números. No inventes datos.`;
 
   // Construcción del mensaje según proveedor
   let userMessage = { role: "user" };
 
   if (provider === "gemini") {
     userMessage.content = promptBase;
-    userMessage.images = currentImages;
+    userMessage.images = currentImages;           // Gemini acepta array de imágenes
   } else {
     // Groq - formato OpenAI
     userMessage.content = [{ type: "text", text: promptBase }];
