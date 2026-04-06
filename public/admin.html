@@ -54,8 +54,14 @@
       <div class="card">
         <h2>🔑 Gestión de API Keys</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 35px;">
-          <div><h3>Gemini API Keys</h3><div id="gemini-keys"></div></div>
-          <div><h3>Groq API Keys</h3><div id="groq-keys"></div></div>
+          <div>
+            <h3>Gemini API Keys</h3>
+            <div id="gemini-keys"></div>
+          </div>
+          <div>
+            <h3>Groq API Keys</h3>
+            <div id="groq-keys"></div>
+          </div>
         </div>
         <button class="btn-primary" onclick="saveAll()" style="margin-top:20px;">💾 Guardar Cambios en Keys</button>
       </div>
@@ -67,7 +73,7 @@
       </div>
     </div>
 
-    <!-- Analizador -->
+    <!-- Analizador - 1 sola imagen -->
     <div id="panel-tester" style="display: none;">
       <div class="card">
         <h2>🧪 Analizador de Imágenes por IA</h2>
@@ -109,21 +115,115 @@
     }
 
     function initData() {
-      if (!localStorage.getItem('geminiKeys')) localStorage.setItem('geminiKeys', JSON.stringify([{name:"Gemini Principal",key:""},{name:"Gemini Backup 1",key:""},{name:"Gemini Backup 2",key:""},{name:"Gemini Backup 3",key:""}]));
-      if (!localStorage.getItem('groqKeys')) localStorage.setItem('groqKeys', JSON.stringify([{name:"Groq Principal",key:""},{name:"Groq Backup 1",key:""},{name:"Groq Backup 2",key:""},{name:"Groq Backup 3",key:""}]));
-      if (!localStorage.getItem('systemPrompts')) localStorage.setItem('systemPrompts', JSON.stringify([{name:"Análisis Técnico",prompt:"Eres un experto en análisis técnico de gráficos financieros. Extrae valores con precisión."},{name:"Análisis Detallado",prompt:"Analiza la imagen con mucho detalle, explica tendencias y patrones claros."},{name:"Modo Simple",prompt:"Explica de forma clara y sencilla lo que ves en la imagen."},{name:"Modo Trading",prompt:"Actúa como trader profesional. Analiza Open Interest y posibles implicaciones."}]));
+      if (!localStorage.getItem('geminiKeys')) {
+        localStorage.setItem('geminiKeys', JSON.stringify([
+          {name: "Gemini Principal", key: ""},
+          {name: "Gemini Backup 1", key: ""},
+          {name: "Gemini Backup 2", key: ""},
+          {name: "Gemini Backup 3", key: ""}
+        ]));
+      }
+      if (!localStorage.getItem('groqKeys')) {
+        localStorage.setItem('groqKeys', JSON.stringify([
+          {name: "Groq Principal", key: ""},
+          {name: "Groq Backup 1", key: ""},
+          {name: "Groq Backup 2", key: ""},
+          {name: "Groq Backup 3", key: ""}
+        ]));
+      }
+      if (!localStorage.getItem('systemPrompts')) {
+        localStorage.setItem('systemPrompts', JSON.stringify([
+          {name: "Análisis Técnico", prompt: "Eres un experto en análisis técnico de gráficos financieros. Extrae valores con precisión."},
+          {name: "Análisis Detallado", prompt: "Analiza la imagen con mucho detalle, explica tendencias y patrones claros."},
+          {name: "Modo Simple", prompt: "Explica de forma clara y sencilla lo que ves en la imagen."},
+          {name: "Modo Trading", prompt: "Actúa como trader profesional. Analiza Open Interest y posibles implicaciones."}
+        ]));
+      }
     }
 
-    function renderKeys() { /* ... mismo código anterior ... */ }
-    function renderPrompts() { /* ... mismo código anterior ... */ }
-    function renderSelectors() { /* ... mismo código anterior ... */ }
-    function updateKeyName(type, index, value) { /* ... mismo código anterior ... */ }
-    function updateKeyValue(type, index, value) { /* ... mismo código anterior ... */ }
-    function updatePromptName(index, value) { /* ... mismo código anterior ... */ }
-    function updatePromptValue(index, value) { /* ... mismo código anterior ... */ }
-    function saveAll() { /* ... mismo toast ... */ }
+    function renderKeys() {
+      const geminiKeys = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
+      const groqKeys = JSON.parse(localStorage.getItem('groqKeys') || '[]');
+      let html = '';
+      geminiKeys.forEach((item, i) => {
+        html += `<div class="key-slot">
+          <input type="text" value="${item.name}" onchange="updateKeyName('gemini', ${i}, this.value)">
+          <input type="password" value="${item.key}" placeholder="API Key Gemini" onchange="updateKeyValue('gemini', ${i}, this.value)">
+        </div>`;
+      });
+      document.getElementById('gemini-keys').innerHTML = html;
 
-    // ==================== STREAMING (1 sola imagen) ====================
+      html = '';
+      groqKeys.forEach((item, i) => {
+        html += `<div class="key-slot">
+          <input type="text" value="${item.name}" onchange="updateKeyName('groq', ${i}, this.value)">
+          <input type="password" value="${item.key}" placeholder="API Key Groq" onchange="updateKeyValue('groq', ${i}, this.value)">
+        </div>`;
+      });
+      document.getElementById('groq-keys').innerHTML = html;
+    }
+
+    function renderPrompts() {
+      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
+      let html = '';
+      prompts.forEach((item, i) => {
+        html += `
+          <div style="margin-bottom:16px;">
+            <input type="text" value="${item.name}" style="width:32%" onchange="updatePromptName(${i}, this.value)">
+            <textarea style="width:66%; margin-left:2%" rows="3" onchange="updatePromptValue(${i}, this.value)">${item.prompt}</textarea>
+          </div>`;
+      });
+      document.getElementById('prompts-container').innerHTML = html;
+    }
+
+    function renderSelectors() {
+      const geminiKeys = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
+      const groqKeys = JSON.parse(localStorage.getItem('groqKeys') || '[]');
+      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
+
+      let html = '<option value="">-- Selecciona una Key --</option>';
+      geminiKeys.forEach((k, i) => { if (k.key) html += `<option value="gemini:${i}">Gemini - ${k.name}</option>`; });
+      groqKeys.forEach((k, i) => { if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; });
+      document.getElementById('selectedKey').innerHTML = html;
+
+      html = '';
+      prompts.forEach((p, i) => html += `<option value="${i}">${p.name}</option>`);
+      document.getElementById('selectedPrompt').innerHTML = html;
+    }
+
+    function updateKeyName(type, index, value) {
+      const keys = JSON.parse(localStorage.getItem(type + 'Keys') || '[]');
+      keys[index].name = value;
+      localStorage.setItem(type + 'Keys', JSON.stringify(keys));
+    }
+
+    function updateKeyValue(type, index, value) {
+      const keys = JSON.parse(localStorage.getItem(type + 'Keys') || '[]');
+      keys[index].key = value;
+      localStorage.setItem(type + 'Keys', JSON.stringify(keys));
+    }
+
+    function updatePromptName(index, value) {
+      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
+      prompts[index].name = value;
+      localStorage.setItem('systemPrompts', JSON.stringify(prompts));
+    }
+
+    function updatePromptValue(index, value) {
+      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
+      prompts[index].prompt = value;
+      localStorage.setItem('systemPrompts', JSON.stringify(prompts));
+    }
+
+    function saveAll() {
+      const status = document.createElement('div');
+      status.className = 'status success';
+      status.textContent = '✅ Cambios guardados correctamente';
+      document.body.appendChild(status);
+      setTimeout(() => status.remove(), 2500);
+    }
+
+    // Streaming (1 sola imagen)
     async function sendTest() {
       const keySelect = document.getElementById('selectedKey').value;
       const promptIndex = document.getElementById('selectedPrompt').value;
@@ -154,7 +254,11 @@
       };
 
       try {
-        const res = await fetch(ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const res = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
 
         if (!res.ok) {
           const err = await res.text();
@@ -174,11 +278,14 @@
             output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
             break;
           }
+
           buffer += decoder.decode(value, { stream: true });
+
           let pos;
           while ((pos = buffer.indexOf('\n\n')) !== -1) {
             const event = buffer.substring(0, pos);
             buffer = buffer.substring(pos + 2);
+
             if (event.startsWith('data: ')) {
               const dataStr = event.substring(6).trim();
               if (dataStr && dataStr !== '[DONE]') {
@@ -200,7 +307,7 @@
       }
     }
 
-    // ==================== GUARDADO CORREGIDO - Extrae datos reales ====================
+    // Guardado corregido
     async function saveAsLatest() {
       const outputDiv = document.getElementById('output');
       const fullText = outputDiv.innerText || outputDiv.textContent || '';
@@ -210,19 +317,18 @@
         return;
       }
 
-      // Intentamos extraer números que parezcan precios (5 dígitos cerca de 23xxx)
-      const priceMatches = fullText.match(/\b(2[3-4]\d{3}(?:\.\d{2})?)\b/g) || [];
-      
+      // Extracción básica de números
+      const priceMatches = fullText.match(/\b(2[3-4]\d{3}(?:\.\d{1,2})?)\b/g) || [];
+
       const dataToSave = {
         precioActual: priceMatches[0] || "--",
-        tendencia: fullText.toLowerCase().includes("alcista") || fullText.toLowerCase().includes("alza") ? "Alcista" : 
-                   (fullText.toLowerCase().includes("bajista") || fullText.toLowerCase().includes("baja") ? "Bajista" : "--"),
-        notasAdicionales: "Análisis generado por IA con imagen",
+        tendencia: fullText.toLowerCase().includes("alcista") ? "Alcista" : (fullText.toLowerCase().includes("bajista") ? "Bajista" : "--"),
+        notasAdicionales: "Análisis generado por IA",
         resultadoPrincipal: "Sesgo detectado según análisis",
         entrada: priceMatches[1] || "--",
         stopLoss: priceMatches[2] || "--",
         target: priceMatches[3] || "--",
-        analisisDetallado: fullText   // ← Texto completo real
+        analisisDetallado: fullText
       };
 
       try {
@@ -235,11 +341,11 @@
         if (res.ok) {
           const status = document.createElement('div');
           status.className = 'status success';
-          status.textContent = '✅ Análisis guardado con datos reales';
+          status.textContent = '✅ Análisis guardado correctamente';
           document.body.appendChild(status);
           setTimeout(() => status.remove(), 3000);
         } else {
-          alert("Error al guardar el análisis");
+          alert("Error al guardar");
         }
       } catch (err) {
         alert("Error de conexión: " + err.message);
