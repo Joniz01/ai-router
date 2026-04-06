@@ -279,103 +279,110 @@
       renderImages();
     }
 
-    // ==================== STREAMING CORREGIDO (Fix para Groq) ====================
-    async function sendTest() {
-      const keySelect = document.getElementById('selectedKey').value;
-      const promptIndex = document.getElementById('selectedPrompt').value;
-      const messageText = document.getElementById('message').value.trim();
-      const output = document.getElementById('output');
+// ==================== STREAMING MEJORADO (con mejor prompt para múltiples imágenes) ====================
+async function sendTest() {
+  const keySelect = document.getElementById('selectedKey').value;
+  const promptIndex = document.getElementById('selectedPrompt').value;
+  const userMessageText = document.getElementById('message').value.trim();
+  const output = document.getElementById('output');
 
-      if (!keySelect) return output.innerHTML = '<span class="error">Selecciona una API Key</span>';
-      if (currentImages.length === 0) return output.innerHTML = '<span class="error">Agrega al menos una imagen</span>';
+  if (!keySelect) return output.innerHTML = '<span class="error">Selecciona una API Key</span>';
+  if (currentImages.length === 0) return output.innerHTML = '<span class="error">Agrega al menos una imagen</span>';
 
-      const [provider, keyIndex] = keySelect.split(':');
-      const keys = JSON.parse(localStorage.getItem(provider + 'Keys') || '[]');
-      const apiKey = keys[keyIndex].key;
-      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
-      const systemPrompt = prompts[promptIndex].prompt;
+  const [provider, keyIndex] = keySelect.split(':');
+  const keys = JSON.parse(localStorage.getItem(provider + 'Keys') || '[]');
+  const apiKey = keys[keyIndex].key;
+  const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
+  const systemPrompt = prompts[promptIndex].prompt;
 
-      output.innerHTML = `<span class="status success">Analizando con ${provider.toUpperCase()}...</span><br>`;
+  output.innerHTML = `<span class="status success">Analizando con ${provider.toUpperCase()}...</span><br>`;
 
-      // Construcción del mensaje según el proveedor
-      let userMessage = { role: "user" };
+  // Prompt mejorado según cantidad de imágenes
+  let promptBase = userMessageText || 
+    (currentImages.length === 1 
+      ? "Analiza esta imagen con mucha atención y extrae todos los niveles de precio, Open Interest, soportes, resistencias y cualquier dato numérico visible con precisión."
+      : `Analiza estas ${currentImages.length} imágenes con mucha atención. 
+         Son gráficos del mismo instrumento (MNQX / MNQ). Extrae los niveles de precio, Open Interest, Delta, liquidez y cualquier dato numérico visible en todas las imágenes. 
+         Compara los datos entre las imágenes y proporciona los valores más consistentes y actualizados.`);
 
-      if (provider === "gemini") {
-        // Gemini soporta campo 'images'
-        userMessage.content = messageText || "Analiza estas imágenes y extrae toda la información relevante.";
-        userMessage.images = currentImages;
-      } else {
-        // Groq usa formato OpenAI (content como array)
-        userMessage.content = [{ type: "text", text: messageText || "Analiza estas imágenes y extrae toda la información relevante." }];
-        currentImages.forEach(imgBase64 => {
-          userMessage.content.push({
-            type: "image_url",
-            image_url: { url: imgBase64 }
-          });
-        });
+  // Construcción del mensaje según proveedor
+  let userMessage = { role: "user" };
+
+  if (provider === "gemini") {
+    userMessage.content = promptBase;
+    userMessage.images = currentImages;
+  } else {
+    // Groq - formato OpenAI
+    userMessage.content = [{ type: "text", text: promptBase }];
+    currentImages.forEach(imgBase64 => {
+      userMessage.content.push({
+        type: "image_url",
+        image_url: { url: imgBase64 }
+      });
+    });
+  }
+
+  const body = {
+    provider,
+    apiKey,
+    model: provider === "gemini" ? "gemini-2.5-flash" : "meta-llama/llama-4-scout-17b-16e-instruct",
+    messages: [userMessage],
+    systemPrompt: systemPrompt
+  };
+
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      output.innerHTML += `<span class="error">Error al iniciar: ${err}</span>`;
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    output.innerHTML = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
+        break;
       }
 
-      const body = {
-        provider,
-        apiKey,
-        model: provider === "gemini" ? "gemini-2.5-flash" : "meta-llama/llama-4-scout-17b-16e-instruct",
-        messages: [userMessage],
-        systemPrompt: systemPrompt
-      };
+      buffer += decoder.decode(value, { stream: true });
 
-      try {
-        const res = await fetch(ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
+      let pos;
+      while ((pos = buffer.indexOf('\n\n')) !== -1) {
+        const event = buffer.substring(0, pos);
+        buffer = buffer.substring(pos + 2);
 
-        if (!res.ok) {
-          const err = await res.text();
-          output.innerHTML += `<span class="error">Error al iniciar: ${err}</span>`;
-          return;
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        output.innerHTML = "";
-
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-
-          let pos;
-          while ((pos = buffer.indexOf('\n\n')) !== -1) {
-            const event = buffer.substring(0, pos);
-            buffer = buffer.substring(pos + 2);
-
-            if (event.startsWith('data: ')) {
-              const dataStr = event.substring(6).trim();
-              if (dataStr && dataStr !== '[DONE]') {
-                try {
-                  const data = JSON.parse(dataStr);
-                  if (data.chunk) {
-                    output.innerHTML += data.chunk.replace(/\n/g, '<br>');
-                    output.scrollTop = output.scrollHeight;
-                  } else if (data.error) {
-                    output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
-                  }
-                } catch (e) {}
+        if (event.startsWith('data: ')) {
+          const dataStr = event.substring(6).trim();
+          if (dataStr && dataStr !== '[DONE]') {
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.chunk) {
+                output.innerHTML += data.chunk.replace(/\n/g, '<br>');
+                output.scrollTop = output.scrollHeight;
+              } else if (data.error) {
+                output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
               }
-            }
+            } catch (e) {}
           }
         }
-      } catch (err) {
-        output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
       }
     }
+  } catch (err) {
+    output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
+  }
+}
 
     async function saveAsLatest() {
       const outputText = document.getElementById('output').innerText || document.getElementById('output').textContent || '';
