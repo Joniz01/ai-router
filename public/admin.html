@@ -87,6 +87,7 @@
       border-radius: 12px; 
       margin-top: 15px; 
       font-size: 15.8px;
+      overflow-y: auto;
     }
     .status { 
       font-weight: bold; 
@@ -149,7 +150,7 @@
         </div>
 
         <label>Mensaje adicional (opcional)</label>
-        <textarea id="message" rows="3" placeholder="Ej: Analiza esta imagen siguiendo exactamente la estructura del system prompt..."></textarea>
+        <textarea id="message" rows="3" placeholder="Ej: Analiza esta imagen siguiendo la estructura del system prompt..."></textarea>
 
         <label>Imagen para analizar (CTRL + V o arrastra)</label>
         <div id="imageDrop" style="border: 3px dashed #10b981; padding: 50px; text-align: center; border-radius: 12px; background: #f0fdf4; min-height: 280px;">
@@ -198,9 +199,9 @@
       }
       if (!localStorage.getItem('systemPrompts')) {
         localStorage.setItem('systemPrompts', JSON.stringify([
-          {name: "MNQ Order Flow Analyst", prompt: "Eres MNQ Order Flow Analyst..."}, // Puedes pegar tu prompt completo aquí
+          {name: "MNQ Order Flow Analyst", prompt: "Eres MNQ Order Flow Analyst, un trader experimentado que opera MNQ. Analiza las imágenes que se te envían..."},
           {name: "Análisis Técnico", prompt: "Eres un experto en análisis técnico de gráficos financieros."},
-          {name: "Análisis Detallado", prompt: "Analiza la imagen con mucho detalle."}
+          {name: "Análisis Detallado", prompt: "Analiza la imagen con mucho detalle y precisión."}
         ]));
       }
     }
@@ -247,12 +248,8 @@
       const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
 
       let html = '<option value="">-- Selecciona una Key --</option>';
-      geminiKeys.forEach((k, i) => { 
-        if (k.key) html += `<option value="gemini:${i}">Gemini - ${k.name}</option>`; 
-      });
-      groqKeys.forEach((k, i) => { 
-        if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; 
-      });
+      geminiKeys.forEach((k, i) => { if (k.key) html += `<option value="gemini:${i}">Gemini - ${k.name}</option>`; });
+      groqKeys.forEach((k, i) => { if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; });
       document.getElementById('selectedKey').innerHTML = html;
 
       html = '';
@@ -292,7 +289,7 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // ==================== FUNCIÓN CORREGIDA ====================
+    // ====================== FUNCIÓN CORREGIDA ======================
     async function saveAsLatest() {
       const keySelect = document.getElementById('selectedKey').value;
       const promptIndex = document.getElementById('selectedPrompt').value;
@@ -309,7 +306,7 @@
       if (!apiKey) return alert("❌ La API Key seleccionada está vacía");
 
       const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
-      const systemPrompt = prompts[promptIndex]?.prompt || "Analiza esta imagen siguiendo la estructura del system prompt.";
+      const systemPrompt = prompts[promptIndex]?.prompt || "Eres MNQ Order Flow Analyst...";
 
       output.innerHTML = `<span class="status success">🔄 Analizando imagen con ${provider.toUpperCase()}...</span>`;
 
@@ -369,7 +366,7 @@
 
         output.innerHTML += '<br><br><span class="success">✅ Análisis completado. Guardando como último análisis...</span>';
 
-        // Guardar en results.html
+        // Guardar en /api/save-latest
         const saveBody = {
           fullAnalysis: fullResponse,
           precioActual: "--",
@@ -385,7 +382,7 @@
 
         if (saveRes.ok) {
           output.innerHTML += '<br><span class="success">✅ Guardado correctamente en results.html</span>';
-          alert("¡Éxito!\n\nEl análisis ha sido guardado correctamente en results.html");
+          alert("¡Éxito!\n\nEl análisis ha sido guardado correctamente.\nRevisa results.html");
         } else {
           throw new Error("No se pudo guardar el análisis");
         }
@@ -393,7 +390,7 @@
       } catch (err) {
         console.error(err);
         output.innerHTML += `<br><span class="error">❌ Error: ${err.message}</span>`;
-        alert("Error: " + err.message);
+        alert("Error durante el proceso: " + err.message);
       }
     }
 
@@ -426,9 +423,8 @@
       reader.readAsDataURL(file);
     }
 
-    // Funciones auxiliares
     function sendTest() {
-      alert("Usa el botón 'Guardar como Último Análisis' para guardar en results.html");
+      alert("Usa el botón 'Guardar como Último Análisis' para guardar el resultado en results.html");
     }
 
     window.onload = () => {
