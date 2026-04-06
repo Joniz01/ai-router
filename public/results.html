@@ -5,22 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MNQX Order Flow Analyst</title>
   <style>
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
+    body { 
+      font-family: 'Segoe UI', system-ui, sans-serif; 
+      background: #0f172a; 
+      color: #e2e8f0; 
+      margin: 0; 
+      padding: 20px; 
+    }
     .container { max-width: 1280px; margin: auto; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-    .card { background: #1e2937; border-radius: 12px; padding: 22px; margin-bottom: 20px; border: 1px solid #334155; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
-    .box { background: #0f172a; padding: 20px; border-radius: 10px; text-align: center; }
-    .label { font-size: 13px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .value { font-size: 26px; font-weight: bold; margin: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .card { background: #1e2937; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #334155; }
+    .title { color: #60a5fa; font-size: 22px; margin-bottom: 16px; font-weight: 600; }
+    .section { margin-bottom: 28px; }
+    .label { font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .value { font-size: 28px; font-weight: 700; margin: 0; }
     .green { color: #22c55e; }
     .red { color: #ef4444; }
-    .title { color: #60a5fa; font-size: 19px; margin-bottom: 18px; }
-    .conclusion { 
-      padding: 22px; border-radius: 10px; font-size: 19px; font-weight: 600; 
-      margin: 20px 0; line-height: 1.5;
-    }
+    .setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .setup-box { background: #0f172a; padding: 16px; border-radius: 10px; text-align: center; }
     .timestamp { color: #64748b; font-size: 14px; }
+    pre { white-space: pre-wrap; font-size: 15.5px; line-height: 1.7; background: #0f172a; padding: 20px; border-radius: 10px; border: 1px solid #334155; }
   </style>
 </head>
 <body>
@@ -28,7 +32,7 @@
     <div class="header">
       <div>
         <h1 style="margin:0; color:#60a5fa;">MNQX Order Flow Analyst</h1>
-        <p style="margin:4px 0 0 0; color:#94a3b8;">Análisis en tiempo real • Auto-refresh cada 60s</p>
+        <p style="margin:4px 0 0 0; color:#94a3b8;">Análisis estructurado • Auto-refresh cada 60s</p>
       </div>
       <div class="timestamp" id="lastUpdate">Cargando...</div>
     </div>
@@ -36,7 +40,7 @@
     <!-- Contexto Operativo -->
     <div class="card">
       <h2 class="title">CONTEXTO OPERATIVO</h2>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
         <div>
           <div class="label">Precio Actual</div>
           <div id="precioActual" class="value">--</div>
@@ -46,39 +50,75 @@
           <div id="tendencia" class="value">--</div>
         </div>
       </div>
-      <div style="margin-top: 20px;">
+      <div style="margin-top: 24px;">
         <div class="label">Notas Adicionales</div>
-        <div id="notas" style="background:#0f172a; padding:16px; border-radius:8px; min-height:70px;">--</div>
+        <div id="notas" style="background:#0f172a; padding:18px; border-radius:10px; min-height:80px; font-size:15px;">--</div>
       </div>
     </div>
 
-    <!-- Resultado Principal -->
+    <!-- Resumen General + Sincronización -->
     <div class="card">
-      <h2 class="title">RESULTADO DEL ANÁLISIS</h2>
-      <div id="conclusion" class="conclusion red">
-        Esperando primer análisis...
-      </div>
+      <h2 class="title">SINCRONIZACIÓN Y RESUMEN GENERAL</h2>
+      <div id="sincronizacion" class="timestamp" style="margin-bottom:12px;"></div>
+      <div id="resumenGeneral" style="font-size:18px; line-height:1.6; font-weight:500;"></div>
+    </div>
 
-      <div class="grid">
-        <div class="box">
+    <!-- Setup Recomendado (más destacado) -->
+    <div class="card">
+      <h2 class="title">SETUP RECOMENDADO</h2>
+      <div class="setup-grid">
+        <div class="setup-box">
           <div class="label">Entrada</div>
           <div id="entrada" class="value green">--</div>
         </div>
-        <div class="box">
+        <div class="setup-box">
           <div class="label">Stop Loss</div>
           <div id="stopLoss" class="value red">--</div>
         </div>
-        <div class="box">
-          <div class="label">Target</div>
-          <div id="target" class="value green">--</div>
+        <div class="setup-box">
+          <div class="label">Target 1</div>
+          <div id="target1" class="value green">--</div>
+        </div>
+        <div class="setup-box">
+          <div class="label">Target 2</div>
+          <div id="target2" class="value green">--</div>
+        </div>
+        <div class="setup-box">
+          <div class="label">Probabilidad</div>
+          <div id="probabilidad" class="value">--</div>
         </div>
       </div>
     </div>
 
-    <!-- Análisis Detallado -->
+    <!-- Análisis Detallado (secciones completas) -->
     <div class="card">
       <h2 class="title">ANÁLISIS DETALLADO</h2>
-      <div id="fullAnalysis" style="line-height:1.85; white-space: pre-wrap; font-size: 15.2px;"></div>
+      
+      <div class="section">
+        <div class="label">Análisis Order Flow</div>
+        <div id="orderFlow" style="font-size:15.5px; line-height:1.75;"></div>
+      </div>
+
+      <div class="section">
+        <div class="label">Análisis GEXBOT Nivel 3</div>
+        <div id="gexbot" style="font-size:15.5px; line-height:1.75;"></div>
+      </div>
+
+      <div class="section">
+        <div class="label">Confluencia y Bias Integrado</div>
+        <div id="confluencia" style="font-size:15.5px; line-height:1.75;"></div>
+      </div>
+
+      <div class="section">
+        <div class="label">Riesgos Clave</div>
+        <div id="riesgos" style="font-size:15.5px; line-height:1.75; color:#f59e0b;"></div>
+      </div>
+    </div>
+
+    <!-- Análisis Raw (para debug) -->
+    <div class="card">
+      <h2 class="title">ANÁLISIS COMPLETO (Raw)</h2>
+      <pre id="fullAnalysis"></pre>
     </div>
   </div>
 
@@ -89,29 +129,39 @@
         if (!res.ok) throw new Error("No hay datos");
         const data = await res.json();
 
-        document.getElementById('lastUpdate').textContent = `Última actualización: ${data.timestamp || '---'}`;
+        document.getElementById('lastUpdate').textContent = `Última actualización: ${data.ultimaActualizacion || '---'}`;
+
+        // Contexto operativo
         document.getElementById('precioActual').textContent = data.precioActual || '--';
         document.getElementById('tendencia').textContent = data.tendencia || '--';
-        document.getElementById('notas').textContent = data.notas || 'Sin notas adicionales';
+        document.getElementById('notas').textContent = data.notasAdicionales || 'Sin notas';
 
-        const conclusionEl = document.getElementById('conclusion');
-        conclusionEl.textContent = data.resultadoPrincipal || 'Sin análisis disponible';
-        conclusionEl.className = `conclusion ${data.conclusionColor === 'green' ? 'green' : 'red'}`;
+        // Sincronización y Resumen
+        document.getElementById('sincronizacion').textContent = data.sincronizacion || '';
+        document.getElementById('resumenGeneral').innerHTML = data.resumenGeneral || '<em>Sin resumen disponible</em>';
 
+        // Setup Recomendado
         document.getElementById('entrada').textContent = data.entrada || '--';
         document.getElementById('stopLoss').textContent = data.stopLoss || '--';
-        document.getElementById('target').textContent = data.target || '--';
-        document.getElementById('fullAnalysis').innerHTML = data.fullAnalysis || '<em>No hay análisis detallado aún.</em>';
+        document.getElementById('target1').textContent = data.target1 || '--';
+        document.getElementById('target2').textContent = data.target2 || '--';
+        document.getElementById('probabilidad').textContent = data.probabilidad || '--';
+
+        // Análisis detallado
+        document.getElementById('orderFlow').innerHTML = data.orderFlow || '<em>Sin análisis de Order Flow</em>';
+        document.getElementById('gexbot').innerHTML = data.gexbot || '<em>Sin datos de GEXBOT</em>';
+        document.getElementById('confluencia').innerHTML = data.confluencia || '<em>Sin confluencia</em>';
+        document.getElementById('riesgos').innerHTML = data.riesgos || '<em>Sin riesgos identificados</em>';
+
+        // Raw completo
+        document.getElementById('fullAnalysis').textContent = data.fullAnalysis || 'No hay análisis completo disponible';
 
       } catch (e) {
         console.log("Aún no hay análisis guardado");
       }
     }
 
-    // Auto refresh cada 60 segundos
     setInterval(loadLatest, 60000);
-
-    // Carga inicial
     window.onload = loadLatest;
   </script>
 </body>
