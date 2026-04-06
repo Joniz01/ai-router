@@ -5,11 +5,19 @@ let latestAnalysis = {
   precioActual: "--",
   tendencia: "--",
   notasAdicionales: "Sin notas adicionales.",
-  resultadoPrincipal: "Sin análisis disponible",
+  sincronizacion: "Sin sincronización disponible",
+  resumenGeneral: "Sin resumen general disponible",
   entrada: "--",
   stopLoss: "--",
-  target: "--",
-  analisisDetallado: "No hay análisis detallado disponible.",
+  target1: "--",
+  target2: "--",
+  probabilidad: "--",
+  orderFlow: "Sin análisis de Order Flow disponible",
+  gexbot: "Sin análisis de GEXBOT disponible",
+  confluencia: "Sin confluencia disponible",
+  riesgos: "Sin riesgos identificados",
+  fullAnalysis: "No hay análisis completo disponible",
+  conclusionColor: "red",           // 'green' o 'red'
   ultimaActualizacion: new Date().toLocaleString('es-PE')
 };
 
@@ -25,16 +33,43 @@ export async function POST(request: NextRequest) {
       precioActual: body.precioActual || "--",
       tendencia: body.tendencia || "--",
       notasAdicionales: body.notasAdicionales || "Sin notas adicionales.",
-      resultadoPrincipal: body.resultadoPrincipal || "Sin análisis disponible",
+
+      // Nuevos campos estructurados
+      sincronizacion: body.sincronizacion || "Sin sincronización disponible",
+      resumenGeneral: body.resumenGeneral || "Sin resumen general disponible",
+
       entrada: body.entrada || "--",
       stopLoss: body.stopLoss || "--",
-      target: body.target || "--",
-      analisisDetallado: body.analisisDetallado || "No hay análisis detallado disponible.",
+      target1: body.target1 || "--",
+      target2: body.target2 || "--",
+      probabilidad: body.probabilidad || "--",
+
+      orderFlow: body.orderFlow || "Sin análisis de Order Flow disponible",
+      gexbot: body.gexbot || "Sin análisis de GEXBOT disponible",
+      confluencia: body.confluencia || "Sin confluencia disponible",
+      riesgos: body.riesgos || "Sin riesgos identificados",
+
+      fullAnalysis: body.fullAnalysis || "No hay análisis completo disponible",
+      
+      // Color de la conclusión principal (verde = alcista, rojo = bajista)
+      conclusionColor: body.conclusionColor || "red",
+
       ultimaActualizacion: new Date().toLocaleString('es-PE')
     };
 
-    return NextResponse.json({ success: true, message: "Análisis guardado correctamente" });
+    console.log("✅ Análisis guardado correctamente:", new Date().toLocaleTimeString('es-PE'));
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Análisis guardado correctamente",
+      timestamp: latestAnalysis.ultimaActualizacion 
+    });
+
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Error al guardar análisis" }, { status: 500 });
+    console.error("❌ Error al guardar análisis:", error);
+    return NextResponse.json({ 
+      success: false, 
+      error: "Error al guardar el análisis" 
+    }, { status: 500 });
   }
 }
