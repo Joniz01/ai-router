@@ -105,7 +105,6 @@
 
         document.getElementById('resultadoPrincipal').textContent = data.resultadoPrincipal || 'Sesgo detectado según análisis';
         
-        // Tipo de operación
         const tipoEl = document.getElementById('tipoOperacion');
         tipoEl.textContent = data.tipoOperacion || '--';
         tipoEl.className = data.tipoOperacion && data.tipoOperacion.includes("Compra") ? 'value compra' : 'value venta';
