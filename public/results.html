@@ -7,16 +7,18 @@
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
     .container { max-width: 1100px; margin: 20px auto; padding: 20px; }
-    h1 { color: #60a5fa; margin: 0 0 10px 0; }
+    h1 { color: #60a5fa; margin: 0 0 8px 0; }
     .subtitle { color: #94a3b8; margin-bottom: 30px; }
     .card { background: #1e2937; border-radius: 12px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .section-title { color: #60a5fa; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #334155; padding-bottom: 8px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
     .info-box { background: #334155; padding: 16px; border-radius: 8px; }
-    .label { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
+    .label { font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
     .value { font-size: 22px; font-weight: bold; }
     .alcista { color: #4ade80; }
     .bajista { color: #f87171; }
+    .compra { color: #4ade80; font-weight: bold; }
+    .venta { color: #f87171; font-weight: bold; }
     .detalle { background: #1e2937; padding: 20px; border-radius: 8px; white-space: pre-wrap; line-height: 1.7; font-size: 15px; }
     .refresh { color: #64748b; font-size: 14px; text-align: right; margin-bottom: 10px; }
   </style>
@@ -27,6 +29,7 @@
     <p class="subtitle">Análisis en tiempo real • Auto-refresh cada 60s</p>
     <div class="refresh" id="lastUpdate">Última actualización: ---</div>
 
+    <!-- CONTEXTO OPERATIVO -->
     <div class="card">
       <div class="section-title">CONTEXTO OPERATIVO</div>
       <div class="grid">
@@ -39,17 +42,24 @@
           <div class="value" id="tendencia">--</div>
         </div>
       </div>
-      <div style="margin-top:20px;">
-        <div class="label">NOTAS ADICIONALES</div>
-        <div class="info-box" id="notasAdicionales">Sin notas adicionales.</div>
-      </div>
     </div>
 
+    <!-- RESUMEN GENERAL DEL MERCADO -->
+    <div class="card">
+      <div class="section-title">RESUMEN GENERAL DEL MERCADO</div>
+      <div class="detalle" id="resumenGeneral">Sin resumen disponible.</div>
+    </div>
+
+    <!-- RESULTADO DEL ANÁLISIS -->
     <div class="card">
       <div class="section-title">RESULTADO DEL ANÁLISIS</div>
-      <div id="resultadoPrincipal" style="color:#f87171; font-weight:bold; margin-bottom:15px;">Sin análisis disponible</div>
+      <div id="resultadoPrincipal" style="color:#f87171; font-weight:bold; margin-bottom:15px;">Sesgo detectado según análisis</div>
       
       <div class="grid">
+        <div class="info-box">
+          <div class="label">TIPO DE OPERACIÓN</div>
+          <div class="value" id="tipoOperacion">--</div>
+        </div>
         <div class="info-box">
           <div class="label">ENTRADA</div>
           <div class="value alcista" id="entrada">--</div>
@@ -65,6 +75,13 @@
       </div>
     </div>
 
+    <!-- RIESGOS CLAVE -->
+    <div class="card">
+      <div class="section-title">RIESGOS CLAVE</div>
+      <div class="detalle" id="riesgosClave">No se detectaron riesgos clave.</div>
+    </div>
+
+    <!-- ANÁLISIS DETALLADO -->
     <div class="card">
       <div class="section-title">ANÁLISIS DETALLADO</div>
       <div class="detalle" id="analisisDetallado">
@@ -82,12 +99,24 @@
         document.getElementById('precioActual').textContent = data.precioActual || '--';
         document.getElementById('tendencia').textContent = data.tendencia || '--';
         document.getElementById('tendencia').className = data.tendencia === 'Alcista' ? 'value alcista' : 'value bajista';
+
+        document.getElementById('resumenGeneral').innerHTML = data.notasAdicionales ? 
+          data.notasAdicionales.replace(/\n/g, '<br>') : 'Sin resumen disponible.';
+
+        document.getElementById('resultadoPrincipal').textContent = data.resultadoPrincipal || 'Sesgo detectado según análisis';
         
-        document.getElementById('notasAdicionales').textContent = data.notasAdicionales || 'Sin notas adicionales.';
-        document.getElementById('resultadoPrincipal').textContent = data.resultadoPrincipal || 'Sin análisis disponible';
+        // Tipo de operación
+        const tipoEl = document.getElementById('tipoOperacion');
+        tipoEl.textContent = data.tipoOperacion || '--';
+        tipoEl.className = data.tipoOperacion && data.tipoOperacion.includes("Compra") ? 'value compra' : 'value venta';
+
         document.getElementById('entrada').textContent = data.entrada || '--';
         document.getElementById('stopLoss').textContent = data.stopLoss || '--';
         document.getElementById('target').textContent = data.target || '--';
+
+        document.getElementById('riesgosClave').innerHTML = data.riesgosClave ? 
+          data.riesgosClave.replace(/\n/g, '<br>') : 'No se detectaron riesgos clave.';
+
         document.getElementById('analisisDetallado').innerHTML = data.analisisDetallado ? 
           data.analisisDetallado.replace(/\n/g, '<br>') : 'No hay análisis detallado disponible.';
 
