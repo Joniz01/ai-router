@@ -308,49 +308,70 @@
     }
 
     // Guardado corregido
-    async function saveAsLatest() {
-      const outputDiv = document.getElementById('output');
-      const fullText = outputDiv.innerText || outputDiv.textContent || '';
+async function saveAsLatest() {
+  const outputDiv = document.getElementById('output');
+  const fullText = outputDiv.innerText || outputDiv.textContent || '';
 
-      if (!fullText || fullText.includes("Selecciona una Key") || fullText.includes("Analizando")) {
-        alert("Primero realiza un análisis completo antes de guardar.");
-        return;
-      }
+  if (!fullText || fullText.includes("Selecciona una Key") || fullText.includes("Analizando")) {
+    alert("Primero realiza un análisis completo antes de guardar.");
+    return;
+  }
 
-      // Extracción básica de números
-      const priceMatches = fullText.match(/\b(2[3-4]\d{3}(?:\.\d{1,2})?)\b/g) || [];
+  // Parser mejorado - busca palabras clave del análisis
+  let precioActual = "--";
+  let tendencia = "--";
+  let entrada = "--";
+  let stopLoss = "--";
+  let target = "--";
 
-      const dataToSave = {
-        precioActual: priceMatches[0] || "--",
-        tendencia: fullText.toLowerCase().includes("alcista") ? "Alcista" : (fullText.toLowerCase().includes("bajista") ? "Bajista" : "--"),
-        notasAdicionales: "Análisis generado por IA",
-        resultadoPrincipal: "Sesgo detectado según análisis",
-        entrada: priceMatches[1] || "--",
-        stopLoss: priceMatches[2] || "--",
-        target: priceMatches[3] || "--",
-        analisisDetallado: fullText
-      };
+  // Buscar precio actual
+  const precioMatch = fullText.match(/precio.*?(\d{5,}(?:\.\d{1,2})?)/i);
+  if (precioMatch) precioActual = precioMatch[1];
 
-      try {
-        const res = await fetch('/api/save-latest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataToSave)
-        });
+  // Buscar tendencia
+  if (fullText.toLowerCase().includes("alcista") || fullText.toLowerCase().includes("alza")) tendencia = "Alcista";
+  else if (fullText.toLowerCase().includes("bajista") || fullText.toLowerCase().includes("baja")) tendencia = "Bajista";
 
-        if (res.ok) {
-          const status = document.createElement('div');
-          status.className = 'status success';
-          status.textContent = '✅ Análisis guardado correctamente';
-          document.body.appendChild(status);
-          setTimeout(() => status.remove(), 3000);
-        } else {
-          alert("Error al guardar");
-        }
-      } catch (err) {
-        alert("Error de conexión: " + err.message);
-      }
+  // Buscar Entrada, Stop Loss, Target
+  const entradaMatch = fullText.match(/entrada.*?(\d{5,}(?:\.\d{1,2})?)/i);
+  const stopMatch = fullText.match(/stop loss.*?(\d{5,}(?:\.\d{1,2})?)/i);
+  const targetMatch = fullText.match(/target.*?(\d{5,}(?:\.\d{1,2})?)/i);
+
+  if (entradaMatch) entrada = entradaMatch[1];
+  if (stopMatch) stopLoss = stopMatch[1];
+  if (targetMatch) target = targetMatch[1];
+
+  const dataToSave = {
+    precioActual: precioActual,
+    tendencia: tendencia,
+    notasAdicionales: "Análisis generado por IA",
+    resultadoPrincipal: tendencia === "--" ? "Sesgo detectado según análisis" : `Sesgo ${tendencia.toLowerCase()} detectado`,
+    entrada: entrada,
+    stopLoss: stopLoss,
+    target: target,
+    analisisDetallado: fullText
+  };
+
+  try {
+    const res = await fetch('/api/save-latest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dataToSave)
+    });
+
+    if (res.ok) {
+      const status = document.createElement('div');
+      status.className = 'status success';
+      status.textContent = '✅ Análisis guardado correctamente con datos reales';
+      document.body.appendChild(status);
+      setTimeout(() => status.remove(), 3000);
+    } else {
+      alert("Error al guardar el análisis");
     }
+  } catch (err) {
+    alert("Error de conexión: " + err.message);
+  }
+}
 
     function clearAll() {
       currentImageBase64 = null;
