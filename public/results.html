@@ -5,47 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MNQX Order Flow Analyst</title>
   <style>
-    body { 
-      font-family: system-ui, Arial, sans-serif; 
-      margin: 0; 
-      background: #0f172a; 
-      color: #e2e8f0; 
-    }
+    body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
     .container { max-width: 1100px; margin: 20px auto; padding: 20px; }
     h1 { color: #60a5fa; margin: 0 0 10px 0; }
     .subtitle { color: #94a3b8; margin-bottom: 30px; }
-    .card { 
-      background: #1e2937; 
-      border-radius: 12px; 
-      padding: 24px; 
-      margin-bottom: 25px; 
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-    .section-title { 
-      color: #60a5fa; 
-      font-size: 18px; 
-      margin-bottom: 15px; 
-      border-bottom: 2px solid #334155; 
-      padding-bottom: 8px;
-    }
+    .card { background: #1e2937; border-radius: 12px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .section-title { color: #60a5fa; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #334155; padding-bottom: 8px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .info-box { 
-      background: #334155; 
-      padding: 16px; 
-      border-radius: 8px; 
-    }
+    .info-box { background: #334155; padding: 16px; border-radius: 8px; }
     .label { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
     .value { font-size: 22px; font-weight: bold; }
     .alcista { color: #4ade80; }
     .bajista { color: #f87171; }
-    .detalle { 
-      background: #1e2937; 
-      padding: 20px; 
-      border-radius: 8px; 
-      white-space: pre-wrap; 
-      line-height: 1.7; 
-      font-size: 15px;
-    }
+    .detalle { background: #1e2937; padding: 20px; border-radius: 8px; white-space: pre-wrap; line-height: 1.7; font-size: 15px; }
     .refresh { color: #64748b; font-size: 14px; text-align: right; margin-bottom: 10px; }
   </style>
 </head>
@@ -125,10 +97,7 @@
       }
     }
 
-    // Auto-refresh cada 60 segundos
     setInterval(loadLatestAnalysis, 60000);
-
-    // Carga inicial
     window.onload = loadLatestAnalysis;
   </script>
 </body>
