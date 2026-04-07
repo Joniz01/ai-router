@@ -317,7 +317,7 @@ async function saveAsLatest() {
     return;
   }
 
-  // Parser mejorado y más robusto
+  // Parser mejorado
   let precioActual = "--";
   let tendencia = "--";
   let tipoOperacion = "--";
@@ -335,7 +335,7 @@ async function saveAsLatest() {
   if (fullText.toLowerCase().includes("alcista") || fullText.toLowerCase().includes("alza")) tendencia = "Alcista";
   else if (fullText.toLowerCase().includes("bajista") || fullText.toLowerCase().includes("baja")) tendencia = "Bajista";
 
-  // Tipo de operación
+  // Tipo de Operación
   if (fullText.toLowerCase().includes("compra") || fullText.toLowerCase().includes("largo") || fullText.toLowerCase().includes("long")) {
     tipoOperacion = "Compra (Largo)";
   } else if (fullText.toLowerCase().includes("venta") || fullText.toLowerCase().includes("corto") || fullText.toLowerCase().includes("short")) {
@@ -350,7 +350,7 @@ async function saveAsLatest() {
   const stopMatch = fullText.match(/stop loss.*?(\d{5,}(?:\.\d{1,2})?)/i);
   if (stopMatch) stopLoss = stopMatch[1];
 
-  // Target (TP1, Target 1, Target, TP)
+  // Target (mejorado para TP1, Target 1, Target, TP)
   const targetMatch = fullText.match(/target\s*1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i) ||
                       fullText.match(/tp1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i) ||
                       fullText.match(/target[:\s]*(\d{5,}(?:\.\d{1,2})?)/i) ||
@@ -358,17 +358,21 @@ async function saveAsLatest() {
   if (targetMatch) target = targetMatch[1];
 
   // Resumen General del Mercado
-  const resumenMatch = fullText.match(/resumen general del mercado[\s\S]*?(?=\n\n###|\n\n##|$)/i);
-  if (resumenMatch) resumenGeneral = resumenMatch[0].replace(/resumen general del mercado[:\s]*/i, '').trim();
+  const resumenMatch = fullText.match(/resumen general del mercado[\s\S]*?(?=\n\n###|\n\n##|\n\n\d\.\s|\n\n$)/i);
+  if (resumenMatch) {
+    resumenGeneral = resumenMatch[0].replace(/resumen general del mercado[:\s]*/i, '').trim();
+  }
 
   // Riesgos Clave
-  const riesgosMatch = fullText.match(/riesgos clave[\s\S]*?(?=\n\n###|\n\n##|$)/i);
-  if (riesgosMatch) riesgosClave = riesgosMatch[0].replace(/riesgos clave[:\s]*/i, '').trim();
+  const riesgosMatch = fullText.match(/riesgos clave[\s\S]*?(?=\n\n###|\n\n##|\n\n\d\.\s|\n\n$)/i);
+  if (riesgosMatch) {
+    riesgosClave = riesgosMatch[0].replace(/riesgos clave[:\s]*/i, '').trim();
+  }
 
   const dataToSave = {
     precioActual: precioActual,
     tendencia: tendencia,
-    notasAdicionales: resumenGeneral,           // Se usa como Resumen General
+    notasAdicionales: resumenGeneral,
     resultadoPrincipal: tipoOperacion !== "--" ? tipoOperacion : "Sesgo detectado según análisis",
     tipoOperacion: tipoOperacion,
     entrada: entrada,
