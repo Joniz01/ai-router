@@ -307,7 +307,7 @@
       }
     }
 
-// ==================== GUARDADO CORREGIDO - Parser mejorado para Target ====================
+// ==================== GUARDADO CORREGIDO - Parser robusto para Target ====================
 async function saveAsLatest() {
   const outputDiv = document.getElementById('output');
   const fullText = outputDiv.innerText || outputDiv.textContent || '';
@@ -317,7 +317,7 @@ async function saveAsLatest() {
     return;
   }
 
-  // Variables
+  // Variables principales
   let precioActual = "--";
   let tendencia = "--";
   let tipoOperacion = "--";
@@ -350,13 +350,15 @@ async function saveAsLatest() {
   const stopMatch = fullText.match(/stop loss.*?(\d{5,}(?:\.\d{1,2})?)/i);
   if (stopMatch) stopLoss = stopMatch[1];
 
-  // 6. TARGET - Parser mucho más robusto
+  // 6. TARGET - Parser mucho más robusto (esta era la parte que fallaba)
   const targetPatterns = [
+    /\*\*target\s*1\*\*[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
     /target\s*1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
-    /tp1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
-    /\*\*target 1\*\*[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
     /\*\*tp1\*\*[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
+    /tp1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
+    /\*\*target\*\*[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
     /target[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
+    /\*\*tp\*\*[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
     /tp[:\s]*(\d{5,}(?:\.\d{1,2})?)/i
   ];
 
