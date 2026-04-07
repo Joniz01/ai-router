@@ -307,7 +307,7 @@
       }
     }
 
-    // Guardado corregido
+// ==================== GUARDADO CORREGIDO - Parser mejorado para Target ====================
 async function saveAsLatest() {
   const outputDiv = document.getElementById('output');
   const fullText = outputDiv.innerText || outputDiv.textContent || '';
@@ -317,7 +317,7 @@ async function saveAsLatest() {
     return;
   }
 
-  // Parser mejorado
+  // Variables
   let precioActual = "--";
   let tendencia = "--";
   let tipoOperacion = "--";
@@ -327,43 +327,54 @@ async function saveAsLatest() {
   let resumenGeneral = "Sin resumen disponible.";
   let riesgosClave = "No se detectaron riesgos clave.";
 
-  // Precio actual
+  // 1. Precio actual
   const precioMatch = fullText.match(/precio.*?(\d{5,}(?:\.\d{1,2})?)/i);
   if (precioMatch) precioActual = precioMatch[1];
 
-  // Tendencia
+  // 2. Tendencia
   if (fullText.toLowerCase().includes("alcista") || fullText.toLowerCase().includes("alza")) tendencia = "Alcista";
   else if (fullText.toLowerCase().includes("bajista") || fullText.toLowerCase().includes("baja")) tendencia = "Bajista";
 
-  // Tipo de Operación
+  // 3. Tipo de Operación
   if (fullText.toLowerCase().includes("compra") || fullText.toLowerCase().includes("largo") || fullText.toLowerCase().includes("long")) {
     tipoOperacion = "Compra (Largo)";
   } else if (fullText.toLowerCase().includes("venta") || fullText.toLowerCase().includes("corto") || fullText.toLowerCase().includes("short")) {
     tipoOperacion = "Venta (Short)";
   }
 
-  // Entrada
+  // 4. Entrada
   const entradaMatch = fullText.match(/entrada.*?(\d{5,}(?:\.\d{1,2})?)/i);
   if (entradaMatch) entrada = entradaMatch[1];
 
-  // Stop Loss
+  // 5. Stop Loss
   const stopMatch = fullText.match(/stop loss.*?(\d{5,}(?:\.\d{1,2})?)/i);
   if (stopMatch) stopLoss = stopMatch[1];
 
-  // Target (mejorado para TP1, Target 1, Target, TP)
-  const targetMatch = fullText.match(/target\s*1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i) ||
-                      fullText.match(/tp1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i) ||
-                      fullText.match(/target[:\s]*(\d{5,}(?:\.\d{1,2})?)/i) ||
-                      fullText.match(/tp[:\s]*(\d{5,}(?:\.\d{1,2})?)/i);
-  if (targetMatch) target = targetMatch[1];
+  // 6. TARGET - Parser mucho más robusto
+  const targetPatterns = [
+    /target\s*1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
+    /tp1[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
+    /\*\*target 1\*\*[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
+    /\*\*tp1\*\*[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
+    /target[:\s]*(\d{5,}(?:\.\d{1,2})?)/i,
+    /tp[:\s]*(\d{5,}(?:\.\d{1,2})?)/i
+  ];
 
-  // Resumen General del Mercado
+  for (const pattern of targetPatterns) {
+    const match = fullText.match(pattern);
+    if (match && match[1]) {
+      target = match[1];
+      break;
+    }
+  }
+
+  // 7. Resumen General del Mercado
   const resumenMatch = fullText.match(/resumen general del mercado[\s\S]*?(?=\n\n###|\n\n##|\n\n\d\.\s|\n\n$)/i);
   if (resumenMatch) {
     resumenGeneral = resumenMatch[0].replace(/resumen general del mercado[:\s]*/i, '').trim();
   }
 
-  // Riesgos Clave
+  // 8. Riesgos Clave
   const riesgosMatch = fullText.match(/riesgos clave[\s\S]*?(?=\n\n###|\n\n##|\n\n\d\.\s|\n\n$)/i);
   if (riesgosMatch) {
     riesgosClave = riesgosMatch[0].replace(/riesgos clave[:\s]*/i, '').trim();
