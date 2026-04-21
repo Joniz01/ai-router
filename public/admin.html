@@ -372,21 +372,23 @@ async function saveAsLatest() {
   // ── 4. Confluencia / Probabilidad ─────────────────────────────────────────
   let confluencia = "--";
   const cPs = [
-    /confluencia\s*[>≥=]?\s*(\d{2,3})\s*%/i,
-    /probabilidad[:\s]*(\d{2,3})\s*%/i,
-    /probability[:\s]*(\d{2,3})\s*%/i,
-    /confidence[:\s]*(\d{2,3})\s*%/i,
-    /confluencia[:\s]*(\d{2,3})\s*%/i
+    /confluencia\s*[>≥=]\s*([0-9]{2,3})\s*%/i,
+    /probabilidad\s*:[\*\s]*([0-9]{2,3})\s*%/i,
+    /probability\s*:[\*\s]*([0-9]{2,3})\s*%/i,
+    /confidence\s*:[\*\s]*([0-9]{2,3})\s*%/i,
+    /confluencia\s*:[\*\s]*([0-9]{2,3})\s*%/i
   ];
   for (const p of cPs) { const m = fullText.match(p); if (m) { confluencia = m[1] + "%"; break; } }
 
   // ── 5. Entrada ────────────────────────────────────────────────────────────
-  let entrada = px(/entrada[:\s]*(?:short|long|mnq|entre|en|@)?\s*(\d{5,}(?:\.\d{1,2})?)/i);
-  if (entrada === "--") entrada = px(/entrada[\s\S]{0,40}?(\d{5,}(?:\.\d{1,2})?)/i);
+  // Entrada: puede tener ":**" antes del número (ej. "**Entrada:** Short... 26633.00")
+  let entrada = px(/entrada\s*:[\*\s]*([0-9]{5,}(?:\.[0-9]{1,2})?)/i);
+  if (entrada === "--") entrada = px(/entrada\s*:[^\d]{0,200}?([0-9]{5,}(?:\.[0-9]{1,2})?)/i);
 
   // ── 6. Stop Loss ──────────────────────────────────────────────────────────
-  let stopLoss = px(/stop[\s-]*loss[:\s]*(\d{5,}(?:\.\d{1,2})?)/i);
-  if (stopLoss === "--") stopLoss = px(/\bsl[:\s]*(\d{5,}(?:\.\d{1,2})?)/i);
+  // Estructura real del modelo: "Stop Loss:** 26670.00" — ** después del colon
+  let stopLoss = px(/stop[\s-]*loss\s*:[\*\s]*([0-9]{5,}(?:\.[0-9]{1,2})?)/i);
+  if (stopLoss === "--") stopLoss = px(/\bsl\s*:[\*\s]*([0-9]{5,}(?:\.[0-9]{1,2})?)/i);
 
   // ── 7. TP1 ────────────────────────────────────────────────────────────────
   let target = "--";
