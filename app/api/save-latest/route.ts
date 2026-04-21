@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-// ─── Persistencia en /tmp ────────────────────────────────────────────────────
-// Sobrevive warm restarts. Para producción real usar Vercel KV / Upstash Redis.
 const DATA_FILE = path.join('/tmp', 'latest-analysis.json');
 
 const DEFAULT_STATE = {
   precioActual:        "--",
   tendencia:           "--",
-  notasAdicionales:    "Sin notas adicionales.",
+  notasAdicionales:    "Sin resumen disponible.",
+  analisisOrderFlow:   "",
+  analisisGex:         "",
   resultadoPrincipal:  "Sin análisis disponible",
   tipoOperacion:       "--",
   confluencia:         "--",
@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
     const newState = {
       precioActual:        body.precioActual        || "--",
       tendencia:           body.tendencia           || "--",
-      notasAdicionales:    body.notasAdicionales    || "Sin notas adicionales.",
+      notasAdicionales:    body.notasAdicionales    || "Sin resumen disponible.",
+      analisisOrderFlow:   body.analisisOrderFlow   || "",
+      analisisGex:         body.analisisGex         || "",
       resultadoPrincipal:  body.resultadoPrincipal  || "Sin análisis disponible",
       tipoOperacion:       body.tipoOperacion       || "--",
       confluencia:         body.confluencia         || "--",
@@ -66,7 +68,7 @@ export async function POST(request: NextRequest) {
     await writeState(newState);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[save-latest] Error al guardar:', error);
+    console.error('[save-latest] Error:', error);
     return NextResponse.json(
       { success: false, error: "Error al guardar el análisis" },
       { status: 500 }
