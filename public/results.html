@@ -5,22 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MNQX Order Flow Analyst</title>
   <style>
+    * { box-sizing: border-box; }
     body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
     .container { max-width: 1100px; margin: 20px auto; padding: 20px; }
     h1 { color: #60a5fa; margin: 0 0 8px 0; }
     .subtitle { color: #94a3b8; margin-bottom: 30px; }
     .card { background: #1e2937; border-radius: 12px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .section-title { color: #60a5fa; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #334155; padding-bottom: 8px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
     .info-box { background: #334155; padding: 16px; border-radius: 8px; }
-    .label { font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
-    .value { font-size: 22px; font-weight: bold; color: #e2e8f0; }
-    .alcista { color: #4ade80; }
-    .bajista { color: #f87171; }
-    .compra { color: #4ade80; font-weight: bold; }
-    .venta { color: #f87171; font-weight: bold; }
-    .detalle { background: #1e2937; padding: 20px; border-radius: 8px; white-space: pre-wrap; line-height: 1.7; font-size: 15px; }
-    .refresh { color: #64748b; font-size: 14px; text-align: right; margin-bottom: 10px; }
+    .label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
+    .value { font-size: 20px; font-weight: bold; color: #e2e8f0; }
+    .alcista  { color: #4ade80; }
+    .bajista  { color: #f87171; }
+    .compra   { color: #4ade80; font-weight: bold; }
+    .venta    { color: #f87171; font-weight: bold; }
+    .detalle  { padding: 16px 0; white-space: pre-wrap; line-height: 1.75; font-size: 15px; }
+    .refresh  { color: #64748b; font-size: 14px; text-align: right; margin-bottom: 10px; }
+
+    /* ── Confluencia badge ── */
+    .confluencia-badge {
+      display: inline-block; padding: 4px 12px; border-radius: 20px;
+      font-weight: bold; font-size: 18px;
+    }
+    .conf-alto  { background: rgba(74,222,128,.15); color: #4ade80; }
+    .conf-medio { background: rgba(250,204, 21,.15); color: #facc15; }
+    .conf-bajo  { background: rgba(248,113,113,.15); color: #f87171; }
+    .conf-nd    { background: rgba(100,116,139,.15); color: #94a3b8; }
+
+    /* ── Consideraciones block ── */
+    .consideraciones-list { list-style: none; padding: 0; margin: 0; }
+    .consideraciones-list li {
+      padding: 10px 14px; margin-bottom: 8px;
+      background: rgba(96,165,250,.08); border-left: 3px solid #60a5fa;
+      border-radius: 0 6px 6px 0; line-height: 1.55; font-size: 14px;
+    }
 
     /* ── Status bar ── */
     #statusBar {
@@ -37,9 +56,9 @@
     #retryBtn {
       margin-left: auto; padding: 4px 12px; border-radius: 6px;
       background: #334155; color: #e2e8f0; border: none; cursor: pointer; font-size: 13px;
-      display: none;
     }
     #retryBtn:hover { background: #475569; }
+    #retryBtn { display: none; }
   </style>
 </head>
 <body>
@@ -61,11 +80,11 @@
       <div class="section-title">CONTEXTO OPERATIVO</div>
       <div class="grid">
         <div class="info-box">
-          <div class="label">PRECIO ACTUAL</div>
+          <div class="label">Precio Actual</div>
           <div class="value" id="precioActual">--</div>
         </div>
         <div class="info-box">
-          <div class="label">TENDENCIA CUM DELTA</div>
+          <div class="label">Tendencia Cum Delta</div>
           <div class="value" id="tendencia">--</div>
         </div>
       </div>
@@ -80,26 +99,38 @@
     <!-- RESULTADO DEL ANÁLISIS -->
     <div class="card">
       <div class="section-title">RESULTADO DEL ANÁLISIS</div>
-      <div id="resultadoPrincipal" style="color:#f87171; font-weight:bold; margin-bottom:15px;">Sesgo detectado según análisis</div>
-
       <div class="grid">
         <div class="info-box">
-          <div class="label">TIPO DE OPERACIÓN</div>
+          <div class="label">Tipo de Operación</div>
           <div class="value" id="tipoOperacion">--</div>
         </div>
         <div class="info-box">
-          <div class="label">ENTRADA</div>
+          <div class="label">Confluencia</div>
+          <div class="value"><span class="confluencia-badge conf-nd" id="confluencia">--</span></div>
+        </div>
+        <div class="info-box">
+          <div class="label">Entrada</div>
           <div class="value alcista" id="entrada">--</div>
         </div>
         <div class="info-box">
-          <div class="label">STOP LOSS</div>
+          <div class="label">Stop Loss</div>
           <div class="value bajista" id="stopLoss">--</div>
         </div>
         <div class="info-box">
-          <div class="label">TARGET</div>
+          <div class="label">Target 1 (TP1)</div>
           <div class="value alcista" id="target">--</div>
         </div>
+        <div class="info-box">
+          <div class="label">Target 2 (TP2)</div>
+          <div class="value alcista" id="tp2">--</div>
+        </div>
       </div>
+    </div>
+
+    <!-- CONSIDERACIONES CLAVE PARA ENTRAR (se oculta si no hay datos) -->
+    <div class="card" id="cardConsideraciones" style="display:none;">
+      <div class="section-title">⚠ CONSIDERACIONES CLAVE PARA ENTRAR</div>
+      <ul class="consideraciones-list" id="consideracionesList"></ul>
     </div>
 
     <!-- RIESGOS CLAVE -->
@@ -121,55 +152,83 @@
     const btn  = document.getElementById('retryBtn');
 
     function setStatus(state, msg) {
-      dot.className  = state;   // 'ok' | 'err' | 'load'
+      dot.className = state;
       text.textContent = msg;
       btn.style.display = state === 'err' ? 'inline-block' : 'none';
+    }
+
+    function confluenciaClass(val) {
+      if (val === '--' || !val) return 'conf-nd';
+      const n = parseInt(val);
+      if (isNaN(n)) return 'conf-nd';
+      if (n >= 75) return 'conf-alto';
+      if (n >= 50) return 'conf-medio';
+      return 'conf-bajo';
     }
 
     async function loadLatestAnalysis() {
       setStatus('load', 'Cargando análisis…');
       try {
         const res = await fetch('/api/save-latest');
-
         if (!res.ok) {
-          // El servidor respondió pero con error HTTP
           setStatus('err', `Error del servidor: HTTP ${res.status} — verifica que Next.js esté corriendo`);
           return;
         }
-
         const data = await res.json();
 
-        // ── Poblar campos ────────────────────────────────────────────────────
+        // ── Contexto operativo ───────────────────────────────────────────────
         document.getElementById('precioActual').textContent = data.precioActual || '--';
 
         const tendEl = document.getElementById('tendencia');
-        tendEl.textContent  = data.tendencia || '--';
-        tendEl.className = data.tendencia === 'Alcista' ? 'value alcista'
-                         : data.tendencia === 'Bajista' ? 'value bajista'
-                         : 'value';
+        tendEl.textContent = data.tendencia || '--';
+        tendEl.className   = data.tendencia === 'Alcista' ? 'value alcista'
+                           : data.tendencia === 'Bajista' ? 'value bajista'
+                           : 'value';
 
+        // ── Resumen ──────────────────────────────────────────────────────────
         document.getElementById('resumenGeneral').innerHTML =
           data.notasAdicionales
             ? data.notasAdicionales.replace(/\n/g, '<br>')
             : 'Sin resumen disponible.';
 
-        document.getElementById('resultadoPrincipal').textContent =
-          data.resultadoPrincipal || 'Sesgo detectado según análisis';
-
+        // ── Resultado del análisis ───────────────────────────────────────────
         const tipoEl = document.getElementById('tipoOperacion');
         tipoEl.textContent = data.tipoOperacion || '--';
         tipoEl.className   = data.tipoOperacion && data.tipoOperacion.toLowerCase().includes('compra')
           ? 'value compra' : 'value venta';
 
+        // Confluencia badge
+        const confEl = document.getElementById('confluencia');
+        const confVal = data.confluencia || '--';
+        confEl.textContent = confVal;
+        confEl.className   = 'confluencia-badge ' + confluenciaClass(confVal);
+
         document.getElementById('entrada').textContent  = data.entrada  || '--';
         document.getElementById('stopLoss').textContent = data.stopLoss || '--';
         document.getElementById('target').textContent   = data.target   || '--';
+        document.getElementById('tp2').textContent      = data.tp2      || '--';
 
+        // ── Consideraciones ──────────────────────────────────────────────────
+        const cardCons  = document.getElementById('cardConsideraciones');
+        const listCons  = document.getElementById('consideracionesList');
+        const consText  = (data.consideraciones || '').trim();
+        if (consText) {
+          const items = consText.split('\n').filter(l => l.trim());
+          listCons.innerHTML = items.map(l =>
+            `<li>${l.replace(/^[•\-*\s]+/, '')}</li>`
+          ).join('');
+          cardCons.style.display = 'block';
+        } else {
+          cardCons.style.display = 'none';
+        }
+
+        // ── Riesgos clave ────────────────────────────────────────────────────
         document.getElementById('riesgosClave').innerHTML =
           data.riesgosClave
             ? data.riesgosClave.replace(/\n/g, '<br>')
             : 'No se detectaron riesgos clave.';
 
+        // ── Análisis detallado ───────────────────────────────────────────────
         document.getElementById('analisisDetallado').innerHTML =
           data.analisisDetallado
             ? data.analisisDetallado.replace(/\n/g, '<br>')
@@ -178,15 +237,14 @@
         document.getElementById('lastUpdate').textContent =
           `Última actualización: ${data.ultimaActualizacion || '---'}`;
 
-        setStatus('ok', `Datos cargados correctamente · ${new Date().toLocaleTimeString('es-PE')}`);
+        setStatus('ok', `Datos cargados · ${new Date().toLocaleTimeString('es-PE')}`);
       } catch (err) {
-        // Error de red: servidor caído, CORS, archivo abierto local, etc.
         setStatus('err',
           err.message.includes('Failed to fetch')
             ? '⚠ No se pudo conectar — ¿Next.js está corriendo? Verifica en http://localhost:3000'
             : `⚠ Error: ${err.message}`
         );
-        console.error('[results.html] Error cargando análisis:', err);
+        console.error('[results.html]', err);
       }
     }
 
@@ -195,3 +253,4 @@
   </script>
 </body>
 </html>
+
