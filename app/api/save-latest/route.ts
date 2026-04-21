@@ -1,69 +1,54 @@
 // app/api/save-latest/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { NextRequest } from 'next/server';
 
-// ─── Persistencia en /tmp ────────────────────────────────────────────────────
-// Sobrevive warm restarts. Para producción real usar Vercel KV / Upstash Redis.
-const DATA_FILE = path.join('/tmp', 'latest-analysis.json');
-
-const DEFAULT_STATE = {
+let latestAnalysis = {
+  timestamp: "",
   precioActual: "--",
   tendencia: "--",
-  notasAdicionales: "Sin notas adicionales.",
+  horarioNY: "--",
+  notas: "Sin notas adicionales.",
   resultadoPrincipal: "Sin análisis disponible",
-  tipoOperacion: "--",
+  conclusionColor: "red",
   entrada: "--",
   stopLoss: "--",
   target: "--",
-  riesgosClave: "No se detectaron riesgos clave.",
-  analisisDetallado: "No hay análisis detallado disponible.",
-  ultimaActualizacion: new Date().toLocaleString('es-PE')
+  rr: "--",
+  fullAnalysis: "No hay análisis detallado disponible."
 };
-
-async function readState() {
-  try {
-    const raw = await fs.readFile(DATA_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return { ...DEFAULT_STATE };
-  }
-}
-
-async function writeState(data: object) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(data), 'utf-8');
-}
-
-export async function GET() {
-  const state = await readState();
-  return NextResponse.json(state);
-}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const newState = {
-      precioActual:        body.precioActual        || "--",
-      tendencia:           body.tendencia           || "--",
-      notasAdicionales:    body.notasAdicionales    || "Sin notas adicionales.",
-      resultadoPrincipal:  body.resultadoPrincipal  || "Sin análisis disponible",
-      tipoOperacion:       body.tipoOperacion       || "--",
-      entrada:             body.entrada             || "--",
-      stopLoss:            body.stopLoss            || "--",
-      target:              body.target              || "--",
-      riesgosClave:        body.riesgosClave        || "No se detectaron riesgos clave.",
-      analisisDetallado:   body.analisisDetallado   || "No hay análisis detallado disponible.",
-      ultimaActualizacion: new Date().toLocaleString('es-PE')
+    latestAnalysis = {
+      timestamp: new Date().toLocaleString('es-ES'),
+      precioActual: body.precioActual || "--",
+      tendencia: body.tendencia || "--",
+      horarioNY: body.horarioNY || "--",
+      notas: body.notas || "Sin notas adicionales.",
+      resultadoPrincipal: body.resultadoPrincipal || "Sin análisis disponible",
+      conclusionColor: body.conclusionColor || "red",
+      entrada: body.entrada || "--",
+      stopLoss: body.stopLoss || "--",
+      target: body.target || "--",
+      rr: body.rr || "--",
+      fullAnalysis: body.fullAnalysis || "No hay análisis detallado disponible."
     };
 
-    await writeState(newState);
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('[save-latest] Error al guardar:', error);
-    return NextResponse.json(
-      { success: false, error: "Error al guardar el análisis" },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ success: true, message: "Análisis guardado correctamente" }), { 
+      status: 200 
+    });
+  } catch (error: any) {
+    console.error("Error guardando análisis:", error);
+    return new Response(JSON.stringify({ success: false, error: error.message }), { 
+      status: 500 
+    });
   }
+}
+
+export async function GET() {
+  return new Response(JSON.stringify(latestAnalysis), {
+    headers: { "Content-Type": "application/json" },
+    status: 200
+  });
 }
