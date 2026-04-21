@@ -10,55 +10,66 @@
     .container { max-width: 1100px; margin: 20px auto; padding: 20px; }
     h1 { color: #60a5fa; margin: 0 0 8px 0; }
     .subtitle { color: #94a3b8; margin-bottom: 30px; }
+
+    /* ── Cards ── */
     .card { background: #1e2937; border-radius: 12px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    .section-title { color: #60a5fa; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #334155; padding-bottom: 8px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
-    .info-box { background: #334155; padding: 16px; border-radius: 8px; }
-    .label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
-    .value { font-size: 20px; font-weight: bold; color: #e2e8f0; }
-    .alcista  { color: #4ade80; }
-    .bajista  { color: #f87171; }
-    .compra   { color: #4ade80; font-weight: bold; }
-    .venta    { color: #f87171; font-weight: bold; }
-    .detalle  { padding: 16px 0; white-space: pre-wrap; line-height: 1.75; font-size: 15px; }
-    .refresh  { color: #64748b; font-size: 14px; text-align: right; margin-bottom: 10px; }
+    .section-title { color: #60a5fa; font-size: 16px; font-weight: 700; margin-bottom: 15px; border-bottom: 2px solid #334155; padding-bottom: 8px; letter-spacing: .04em; text-transform: uppercase; }
+    .detalle { padding: 4px 0; white-space: pre-wrap; line-height: 1.75; font-size: 14px; color: #cbd5e1; }
+
+    /* ── Grid de resultados ── */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 14px; }
+    .info-box { background: #334155; padding: 14px 16px; border-radius: 8px; }
+    .label { font-size: 11px; color: #94a3b8; margin-bottom: 6px; letter-spacing: .06em; text-transform: uppercase; }
+    .value { font-size: 20px; font-weight: 700; color: #e2e8f0; }
+    .alcista { color: #4ade80; }
+    .bajista { color: #f87171; }
+    .compra  { color: #4ade80; font-weight: 700; }
+    .venta   { color: #f87171; font-weight: 700; }
 
     /* ── Confluencia badge ── */
-    .confluencia-badge {
-      display: inline-block; padding: 4px 12px; border-radius: 20px;
-      font-weight: bold; font-size: 18px;
-    }
+    .conf-badge { display: inline-block; padding: 3px 12px; border-radius: 20px; font-weight: 700; font-size: 18px; }
     .conf-alto  { background: rgba(74,222,128,.15); color: #4ade80; }
-    .conf-medio { background: rgba(250,204, 21,.15); color: #facc15; }
+    .conf-medio { background: rgba(250,204,21,.15);  color: #facc15; }
     .conf-bajo  { background: rgba(248,113,113,.15); color: #f87171; }
     .conf-nd    { background: rgba(100,116,139,.15); color: #94a3b8; }
 
-    /* ── Consideraciones block ── */
-    .consideraciones-list { list-style: none; padding: 0; margin: 0; }
-    .consideraciones-list li {
-      padding: 10px 14px; margin-bottom: 8px;
-      background: rgba(96,165,250,.08); border-left: 3px solid #60a5fa;
-      border-radius: 0 6px 6px 0; line-height: 1.55; font-size: 14px;
-    }
+    /* ── Consideraciones ── */
+    .cons-list { list-style: none; padding: 0; margin: 0; }
+    .cons-list li { padding: 10px 14px; margin-bottom: 8px; background: rgba(96,165,250,.08); border-left: 3px solid #60a5fa; border-radius: 0 6px 6px 0; line-height: 1.55; font-size: 14px; }
 
-    /* ── Status bar ── */
-    #statusBar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; border-radius: 8px; margin-bottom: 20px;
-      font-size: 14px; background: #1e2937;
+    /* ── Análisis Detallado colapsable ── */
+    .collapsible-header {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none;
+      color: #60a5fa; font-size: 16px; font-weight: 700;
+      border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 0;
+      letter-spacing: .04em; text-transform: uppercase;
     }
-    #statusDot { width: 10px; height: 10px; border-radius: 50%; background: #64748b; flex-shrink: 0; }
+    .collapsible-header:hover { color: #93c5fd; }
+    .toggle-icon {
+      width: 24px; height: 24px; border-radius: 6px;
+      background: #334155; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0; transition: transform .25s, background .2s;
+    }
+    .collapsible-header.open .toggle-icon { transform: rotate(45deg); background: #475569; }
+    .collapsible-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height .35s ease, padding-top .25s ease;
+      padding-top: 0;
+    }
+    .collapsible-body.open { max-height: 9999px; padding-top: 16px; }
+
+    /* ── Refresh / status ── */
+    .refresh { color: #64748b; font-size: 13px; text-align: right; margin-bottom: 10px; }
+    #statusBar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; background: #1e2937; }
+    #statusDot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: #64748b; }
     #statusDot.ok   { background: #4ade80; }
     #statusDot.err  { background: #f87171; }
     #statusDot.load { background: #facc15; animation: pulse 1s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
     #statusText { color: #94a3b8; }
-    #retryBtn {
-      margin-left: auto; padding: 4px 12px; border-radius: 6px;
-      background: #334155; color: #e2e8f0; border: none; cursor: pointer; font-size: 13px;
-    }
+    #retryBtn { margin-left: auto; padding: 4px 12px; border-radius: 6px; background: #334155; color: #e2e8f0; border: none; cursor: pointer; font-size: 13px; display: none; }
     #retryBtn:hover { background: #475569; }
-    #retryBtn { display: none; }
   </style>
 </head>
 <body>
@@ -66,18 +77,16 @@
     <h1>MNQX Order Flow Analyst</h1>
     <p class="subtitle">Análisis en tiempo real • Auto-refresh cada 60s</p>
 
-    <!-- Status bar -->
     <div id="statusBar">
       <div id="statusDot" class="load"></div>
-      <span id="statusText">Conectando con el servidor…</span>
+      <span id="statusText">Conectando…</span>
       <button id="retryBtn" onclick="loadLatestAnalysis()">↻ Reintentar</button>
     </div>
-
     <div class="refresh" id="lastUpdate">Última actualización: ---</div>
 
     <!-- CONTEXTO OPERATIVO -->
     <div class="card">
-      <div class="section-title">CONTEXTO OPERATIVO</div>
+      <div class="section-title">Contexto Operativo</div>
       <div class="grid">
         <div class="info-box">
           <div class="label">Precio Actual</div>
@@ -92,13 +101,25 @@
 
     <!-- RESUMEN GENERAL DEL MERCADO -->
     <div class="card">
-      <div class="section-title">RESUMEN GENERAL DEL MERCADO</div>
+      <div class="section-title">Resumen General del Mercado</div>
       <div class="detalle" id="resumenGeneral">Sin resumen disponible.</div>
+    </div>
+
+    <!-- ANÁLISIS ORDER FLOW (oculto si vacío) -->
+    <div class="card" id="cardOrderFlow" style="display:none;">
+      <div class="section-title">📊 Análisis Order Flow</div>
+      <div class="detalle" id="analisisOrderFlow"></div>
+    </div>
+
+    <!-- ANÁLISIS GEXBOT (oculto si vacío) -->
+    <div class="card" id="cardGex" style="display:none;">
+      <div class="section-title">⚡ Análisis GEXBot</div>
+      <div class="detalle" id="analisisGex"></div>
     </div>
 
     <!-- RESULTADO DEL ANÁLISIS -->
     <div class="card">
-      <div class="section-title">RESULTADO DEL ANÁLISIS</div>
+      <div class="section-title">Resultado del Análisis</div>
       <div class="grid">
         <div class="info-box">
           <div class="label">Tipo de Operación</div>
@@ -106,7 +127,7 @@
         </div>
         <div class="info-box">
           <div class="label">Confluencia</div>
-          <div class="value"><span class="confluencia-badge conf-nd" id="confluencia">--</span></div>
+          <div><span class="conf-badge conf-nd" id="confluencia">--</span></div>
         </div>
         <div class="info-box">
           <div class="label">Entrada</div>
@@ -127,124 +148,137 @@
       </div>
     </div>
 
-    <!-- CONSIDERACIONES CLAVE PARA ENTRAR (se oculta si no hay datos) -->
+    <!-- CONSIDERACIONES CLAVE PARA ENTRAR (oculto si vacío) -->
     <div class="card" id="cardConsideraciones" style="display:none;">
-      <div class="section-title">⚠ CONSIDERACIONES CLAVE PARA ENTRAR</div>
-      <ul class="consideraciones-list" id="consideracionesList"></ul>
+      <div class="section-title">⚠ Consideraciones Clave para Entrar</div>
+      <ul class="cons-list" id="consideracionesList"></ul>
     </div>
 
     <!-- RIESGOS CLAVE -->
     <div class="card">
-      <div class="section-title">RIESGOS CLAVE</div>
+      <div class="section-title">Riesgos Clave</div>
       <div class="detalle" id="riesgosClave">No se detectaron riesgos clave.</div>
     </div>
 
-    <!-- ANÁLISIS DETALLADO -->
+    <!-- ANÁLISIS DETALLADO — COLAPSABLE -->
     <div class="card">
-      <div class="section-title">ANÁLISIS DETALLADO</div>
-      <div class="detalle" id="analisisDetallado">No hay análisis detallado disponible.</div>
+      <div class="collapsible-header" id="analisisHeader" onclick="toggleAnalisis()">
+        <span>Análisis Detallado</span>
+        <div class="toggle-icon">＋</div>
+      </div>
+      <div class="collapsible-body" id="analisisBody">
+        <div class="detalle" id="analisisDetallado">No hay análisis detallado disponible.</div>
+      </div>
     </div>
-  </div>
+
+  </div><!-- /container -->
 
   <script>
     const dot  = document.getElementById('statusDot');
-    const text = document.getElementById('statusText');
+    const txt  = document.getElementById('statusText');
     const btn  = document.getElementById('retryBtn');
 
     function setStatus(state, msg) {
       dot.className = state;
-      text.textContent = msg;
+      txt.textContent = msg;
       btn.style.display = state === 'err' ? 'inline-block' : 'none';
     }
 
-    function confluenciaClass(val) {
-      if (val === '--' || !val) return 'conf-nd';
+    function confClass(val) {
+      if (!val || val === '--') return 'conf-nd';
       const n = parseInt(val);
       if (isNaN(n)) return 'conf-nd';
-      if (n >= 75) return 'conf-alto';
-      if (n >= 50) return 'conf-medio';
-      return 'conf-bajo';
+      return n >= 75 ? 'conf-alto' : n >= 50 ? 'conf-medio' : 'conf-bajo';
+    }
+
+    // ── Colapsable ────────────────────────────────────────────────────────────
+    function toggleAnalisis() {
+      const header = document.getElementById('analisisHeader');
+      const body   = document.getElementById('analisisBody');
+      const isOpen = body.classList.contains('open');
+      body.classList.toggle('open', !isOpen);
+      header.classList.toggle('open', !isOpen);
+    }
+
+    // ── Render helper ─────────────────────────────────────────────────────────
+    function renderBlock(cardId, elId, text, fallback) {
+      const card = document.getElementById(cardId);
+      const el   = document.getElementById(elId);
+      if (text && text.trim()) {
+        el.innerHTML = text.replace(/\n/g, '<br>');
+        card.style.display = 'block';
+      } else {
+        if (fallback) { el.innerHTML = fallback; card.style.display = 'block'; }
+        else          { card.style.display = 'none'; }
+      }
     }
 
     async function loadLatestAnalysis() {
       setStatus('load', 'Cargando análisis…');
       try {
         const res = await fetch('/api/save-latest');
-        if (!res.ok) {
-          setStatus('err', `Error del servidor: HTTP ${res.status} — verifica que Next.js esté corriendo`);
-          return;
-        }
-        const data = await res.json();
+        if (!res.ok) { setStatus('err', `HTTP ${res.status} — verifica que Next.js esté corriendo`); return; }
+        const d = await res.json();
 
-        // ── Contexto operativo ───────────────────────────────────────────────
-        document.getElementById('precioActual').textContent = data.precioActual || '--';
+        // Contexto operativo
+        document.getElementById('precioActual').textContent = d.precioActual || '--';
+        const tEl = document.getElementById('tendencia');
+        tEl.textContent = d.tendencia || '--';
+        tEl.className   = d.tendencia === 'Alcista' ? 'value alcista' : d.tendencia === 'Bajista' ? 'value bajista' : 'value';
 
-        const tendEl = document.getElementById('tendencia');
-        tendEl.textContent = data.tendencia || '--';
-        tendEl.className   = data.tendencia === 'Alcista' ? 'value alcista'
-                           : data.tendencia === 'Bajista' ? 'value bajista'
-                           : 'value';
-
-        // ── Resumen ──────────────────────────────────────────────────────────
+        // Resumen (siempre visible)
         document.getElementById('resumenGeneral').innerHTML =
-          data.notasAdicionales
-            ? data.notasAdicionales.replace(/\n/g, '<br>')
-            : 'Sin resumen disponible.';
+          (d.notasAdicionales || 'Sin resumen disponible.').replace(/\n/g, '<br>');
 
-        // ── Resultado del análisis ───────────────────────────────────────────
-        const tipoEl = document.getElementById('tipoOperacion');
-        tipoEl.textContent = data.tipoOperacion || '--';
-        tipoEl.className   = data.tipoOperacion && data.tipoOperacion.toLowerCase().includes('compra')
-          ? 'value compra' : 'value venta';
+        // OrderFlow y GEX (visibles solo si hay datos)
+        renderBlock('cardOrderFlow', 'analisisOrderFlow', d.analisisOrderFlow, null);
+        renderBlock('cardGex',       'analisisGex',       d.analisisGex,       null);
 
-        // Confluencia badge
-        const confEl = document.getElementById('confluencia');
-        const confVal = data.confluencia || '--';
-        confEl.textContent = confVal;
-        confEl.className   = 'confluencia-badge ' + confluenciaClass(confVal);
+        // Resultado del análisis
+        const tOp = document.getElementById('tipoOperacion');
+        tOp.textContent = d.tipoOperacion || '--';
+        tOp.className   = d.tipoOperacion && d.tipoOperacion.toLowerCase().includes('compra') ? 'value compra' : 'value venta';
 
-        document.getElementById('entrada').textContent  = data.entrada  || '--';
-        document.getElementById('stopLoss').textContent = data.stopLoss || '--';
-        document.getElementById('target').textContent   = data.target   || '--';
-        document.getElementById('tp2').textContent      = data.tp2      || '--';
+        const cEl = document.getElementById('confluencia');
+        cEl.textContent = d.confluencia || '--';
+        cEl.className   = 'conf-badge ' + confClass(d.confluencia);
 
-        // ── Consideraciones ──────────────────────────────────────────────────
-        const cardCons  = document.getElementById('cardConsideraciones');
-        const listCons  = document.getElementById('consideracionesList');
-        const consText  = (data.consideraciones || '').trim();
+        document.getElementById('entrada').textContent  = d.entrada  || '--';
+        document.getElementById('stopLoss').textContent = d.stopLoss || '--';
+        document.getElementById('target').textContent   = d.target   || '--';
+        document.getElementById('tp2').textContent      = d.tp2      || '--';
+
+        // Consideraciones
+        const consText = (d.consideraciones || '').trim();
+        const cardC    = document.getElementById('cardConsideraciones');
+        const listC    = document.getElementById('consideracionesList');
         if (consText) {
-          const items = consText.split('\n').filter(l => l.trim());
-          listCons.innerHTML = items.map(l =>
-            `<li>${l.replace(/^[•\-*\s]+/, '')}</li>`
-          ).join('');
-          cardCons.style.display = 'block';
-        } else {
-          cardCons.style.display = 'none';
-        }
+          listC.innerHTML = consText.split('\n').filter(Boolean)
+            .map(l => `<li>${l.replace(/^[•\-*\s]+/, '')}</li>`).join('');
+          cardC.style.display = 'block';
+        } else { cardC.style.display = 'none'; }
 
-        // ── Riesgos clave ────────────────────────────────────────────────────
+        // Riesgos clave
+        renderBlock('riesgosClave', 'riesgosClave',
+          d.riesgosClave, 'No se detectaron riesgos clave.');
+        // renderBlock no aplica aquí (no hay card wrapper separado), usar directo:
         document.getElementById('riesgosClave').innerHTML =
-          data.riesgosClave
-            ? data.riesgosClave.replace(/\n/g, '<br>')
-            : 'No se detectaron riesgos clave.';
+          (d.riesgosClave || 'No se detectaron riesgos clave.').replace(/\n/g, '<br>');
 
-        // ── Análisis detallado ───────────────────────────────────────────────
+        // Análisis detallado (colapsado por defecto)
         document.getElementById('analisisDetallado').innerHTML =
-          data.analisisDetallado
-            ? data.analisisDetallado.replace(/\n/g, '<br>')
-            : 'No hay análisis detallado disponible.';
+          (d.analisisDetallado || 'No hay análisis detallado disponible.').replace(/\n/g, '<br>');
 
         document.getElementById('lastUpdate').textContent =
-          `Última actualización: ${data.ultimaActualizacion || '---'}`;
+          `Última actualización: ${d.ultimaActualizacion || '---'}`;
 
         setStatus('ok', `Datos cargados · ${new Date().toLocaleTimeString('es-PE')}`);
       } catch (err) {
         setStatus('err',
           err.message.includes('Failed to fetch')
-            ? '⚠ No se pudo conectar — ¿Next.js está corriendo? Verifica en http://localhost:3000'
-            : `⚠ Error: ${err.message}`
+            ? '⚠ No se pudo conectar — ¿Next.js está corriendo?'
+            : `⚠ ${err.message}`
         );
-        console.error('[results.html]', err);
       }
     }
 
@@ -253,4 +287,3 @@
   </script>
 </body>
 </html>
-
