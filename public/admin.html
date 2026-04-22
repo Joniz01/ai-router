@@ -267,87 +267,173 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // Streaming (1 sola imagen)
-    async function sendTest() {
-      const keySelect = document.getElementById('selectedKey').value;
-      const promptIndex = document.getElementById('selectedPrompt').value;
-      const message = document.getElementById('message').value.trim();
-      const output = document.getElementById('output');
+    // ── Configuración de reintentos y fallbacks ──────────────────────────────
+    const GEMINI_MODELS    = ["gemini-2.5-flash", "gemini-2.0-flash"];  // orden de prioridad
+    const GROQ_MODEL       = "meta-llama/llama-4-scout-17b-16e-instruct";
+    const MAX_RETRIES      = 3;
+    const RETRY_BASE_MS    = 2000;   // backoff: 2s, 4s, 8s
+    // Códigos HTTP que ameritan reintento
+    const RETRYABLE_CODES  = new Set([429, 500, 502, 503, 504]);
+    // Strings en el mensaje de error que indican sobrecarga temporal
+    const RETRYABLE_MSGS   = ["high demand", "overloaded", "rate limit", "quota", "try again", "temporarily"];
 
-      if (!keySelect) return output.innerHTML = '<span class="error">Selecciona una API Key</span>';
-      if (!currentImageBase64) return output.innerHTML = '<span class="error">Pega una imagen primero</span>';
+    function isRetryable(statusOrMsg) {
+      if (typeof statusOrMsg === 'number') return RETRYABLE_CODES.has(statusOrMsg);
+      const m = String(statusOrMsg).toLowerCase();
+      return RETRYABLE_MSGS.some(s => m.includes(s));
+    }
 
-      const [provider, keyIndex] = keySelect.split(':');
-      const keys = JSON.parse(localStorage.getItem(provider + 'Keys') || '[]');
-      const apiKey = keys[keyIndex].key;
-      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
-      const systemPrompt = prompts[promptIndex].prompt;
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-      output.innerHTML = `<span class="status success">Analizando con ${provider.toUpperCase()}...</span><br>`;
-
-      const body = {
-        provider,
-        apiKey,
-        model: provider === "gemini" ? "gemini-2.5-flash" : "meta-llama/llama-4-scout-17b-16e-instruct",
+    // Construye el body de la solicitud para el provider/model dados
+    function buildBody(provider, apiKey, model, systemPrompt, message) {
+      return {
+        provider, apiKey, model,
         messages: [{
           role: "user",
           content: message || "Analiza esta imagen con mucha atención y extrae todos los niveles de precio, Open Interest, soportes, resistencias y cualquier dato numérico visible con precisión.",
           image: currentImageBase64
         }],
-        systemPrompt: systemPrompt
+        systemPrompt
       };
+    }
 
-      try {
-        const res = await fetch(ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
+    // Intenta una llamada con stream; retorna el texto acumulado o lanza error
+    async function attemptStream(body, output, label) {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
 
-        if (!res.ok) {
-          const err = await res.text();
-          output.innerHTML += `<span class="error">Error al iniciar: ${err}</span>`;
-          return;
-        }
+      if (!res.ok) {
+        let errMsg = `HTTP ${res.status}`;
+        try { const e = await res.clone().json(); errMsg = e.error?.message || errMsg; } catch {}
+        const err = new Error(errMsg);
+        err.status = res.status;
+        throw err;
+      }
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulated = "";
 
-        output.innerHTML = "";
+      output.innerHTML = "";
 
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            output.innerHTML += '<br><br><span class="success">✅ Análisis completado</span>';
-            break;
-          }
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-
-          let pos;
-          while ((pos = buffer.indexOf('\n\n')) !== -1) {
-            const event = buffer.substring(0, pos);
-            buffer = buffer.substring(pos + 2);
-
-            if (event.startsWith('data: ')) {
-              const dataStr = event.substring(6).trim();
-              if (dataStr && dataStr !== '[DONE]') {
-                try {
-                  const data = JSON.parse(dataStr);
-                  if (data.chunk) {
-                    output.innerHTML += data.chunk.replace(/\n/g, '<br>');
-                    output.scrollTop = output.scrollHeight;
-                  } else if (data.error) {
-                    output.innerHTML += `<br><span class="error">Error: ${data.error}</span>`;
-                  }
-                } catch (e) {}
-              }
+        buffer += decoder.decode(value, { stream: true });
+        let pos;
+        while ((pos = buffer.indexOf("\n\n")) !== -1) {
+          const event = buffer.substring(0, pos);
+          buffer = buffer.substring(pos + 2);
+          if (!event.startsWith("data: ")) continue;
+          const dataStr = event.substring(6).trim();
+          if (!dataStr || dataStr === "[DONE]") continue;
+          try {
+            const data = JSON.parse(dataStr);
+            if (data.chunk) {
+              accumulated += data.chunk;
+              output.innerHTML += data.chunk.replace(/\n/g, "<br>");
+              output.scrollTop = output.scrollHeight;
+            } else if (data.error) {
+              const err = new Error(data.error);
+              err.status = 503;
+              throw err;
             }
+          } catch(e) { if (e.status) throw e; }
+        }
+      }
+      return accumulated;
+    }
+
+    // Streaming con retry + fallback de modelo + fallback a Groq
+    async function sendTest() {
+      const keySelect   = document.getElementById("selectedKey").value;
+      const promptIndex = document.getElementById("selectedPrompt").value;
+      const message     = document.getElementById("message").value.trim();
+      const output      = document.getElementById("output");
+
+      if (!keySelect)          return output.innerHTML = "<span class=\"error\">Selecciona una API Key</span>";
+      if (!currentImageBase64) return output.innerHTML = "<span class=\"error\">Pega una imagen primero</span>";
+
+      const [provider, keyIndex] = keySelect.split(":");
+      const keys        = JSON.parse(localStorage.getItem(provider + "Keys") || "[]");
+      const apiKey      = keys[keyIndex].key;
+      const prompts     = JSON.parse(localStorage.getItem("systemPrompts") || "[]");
+      const systemPrompt = prompts[promptIndex].prompt;
+
+      // Construir la secuencia de intentos:
+      // Si es Gemini: [gemini-2.5-flash x3, gemini-2.0-flash x3, groq-fallback x1]
+      // Si es Groq:   [groq x3]
+      const attempts = [];
+      if (provider === "gemini") {
+        for (const model of GEMINI_MODELS) {
+          for (let r = 0; r < MAX_RETRIES; r++) attempts.push({ provider: "gemini", apiKey, model });
+        }
+        // Fallback final a Groq si hay key disponible
+        const groqKeys = JSON.parse(localStorage.getItem("groqKeys") || "[]");
+        const groqKey  = groqKeys.find(k => k.key);
+        if (groqKey) attempts.push({ provider: "groq", apiKey: groqKey.key, model: GROQ_MODEL });
+      } else {
+        for (let r = 0; r < MAX_RETRIES; r++) attempts.push({ provider: "groq", apiKey, model: GROQ_MODEL });
+      }
+
+      let lastError = null;
+
+      for (let i = 0; i < attempts.length; i++) {
+        const att      = attempts[i];
+        const isRetry  = i > 0 && attempts[i-1].model === att.model;
+        const isFallbackModel = i > 0 && attempts[i-1].model !== att.model;
+        const retryNum = isRetry ? (i % MAX_RETRIES) + 1 : 1;
+
+        // Calcular qué intento es dentro del modelo actual
+        const modelAttemptIdx = attempts.slice(0, i).filter(a => a.model === att.model).length;
+
+        // Etiqueta para el status
+        let label;
+        if (modelAttemptIdx === 0 && !isFallbackModel) {
+          label = `Analizando con ${att.provider.toUpperCase()} (${att.model})...`;
+        } else if (att.provider === "groq" && provider === "gemini") {
+          label = `⚡ Gemini no disponible — usando Groq como fallback...`;
+        } else {
+          const waitSec = Math.round(RETRY_BASE_MS * Math.pow(2, modelAttemptIdx - 1) / 1000);
+          label = isFallbackModel
+            ? `🔄 Fallback a ${att.model}...`
+            : `⏳ Reintento ${modelAttemptIdx}/${MAX_RETRIES} con ${att.model} (espera ${waitSec}s)...`;
+        }
+
+        output.innerHTML = `<span class="status success">${label}</span><br>`;
+
+        // Espera backoff exponencial en reintentos (no en el primero de cada modelo)
+        if (modelAttemptIdx > 0) {
+          await sleep(RETRY_BASE_MS * Math.pow(2, modelAttemptIdx - 1));
+        }
+
+        try {
+          const body = buildBody(att.provider, att.apiKey, att.model, systemPrompt, message);
+          await attemptStream(body, output, label);
+          // Éxito
+          const badge = att.provider === "groq" && provider === "gemini"
+            ? `<br><br><span class="status" style="background:#fef3c7;color:#92400e;">⚡ Completado con Groq (fallback)</span>`
+            : `<br><br><span class="success">✅ Análisis completado</span>`;
+          output.innerHTML += badge;
+          return;  // salir del loop — éxito
+        } catch(err) {
+          lastError = err;
+          // Si el error NO es retryable, no tiene sentido seguir con este modelo
+          if (!isRetryable(err.status || err.message)) {
+            // Saltar todos los reintentos pendientes del modelo actual
+            while (i + 1 < attempts.length && attempts[i+1].model === att.model) i++;
+          }
+          // Si quedan más intentos, continuar; si no, mostrar error final
+          if (i === attempts.length - 1) {
+            output.innerHTML += `<br><span class="error">❌ Todos los intentos fallaron: ${lastError.message}</span>`;
           }
         }
-      } catch (err) {
-        output.innerHTML += `<br><span class="error">Error de conexión: ${err.message}</span>`;
       }
     }
 
