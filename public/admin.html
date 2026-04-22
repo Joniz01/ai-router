@@ -355,9 +355,26 @@ async function saveAsLatest() {
   if (precioActual === "--") { const m = fullText.match(/(\d{5,}(?:\.\d{1,2})?)/); if (m) precioActual = m[1]; }
 
   // ── 2. Tendencia ──────────────────────────────────────────────────────────
+  // FUENTE PRIMARIA: texto de "Interpretación Cum. Delta" — más preciso que scan global
+  // El texto global contiene palabras como "alcista", "compradora" en contextos descriptivos
+  // que no reflejan la conclusión real del Cum. Delta
   let tendencia = "--";
-  if      (/alcista|alza|\bbull/i.test(fullText))          tendencia = "Alcista";
-  else if (/bajista|baja|\bbear|bajando/i.test(fullText))  tendencia = "Bajista";
+  (function() {
+    // 1. Buscar bloque de Interpretación Cum. Delta
+    const mInterp = fullText.match(/interpretaci[oó]n[\w\s.]*cum[\s.]*delta[\w\s.]*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    const interpText = mInterp ? mInterp[1] : fullText;
+
+    const baj = (interpText.match(/\b(negativ[oa]|bajista|vendedor[ao]|bearish|bajando|presión vendedor)\b/gi) || []).length;
+    const alc = (interpText.match(/\b(positiv[oa]|alcista|comprador[ao]|bullish|subiendo)\b/gi) || []).length;
+
+    if (baj > alc)       tendencia = "Bajista";
+    else if (alc > baj)  tendencia = "Alcista";
+    else {
+      // Empate o sin Cum. Delta — fallback: buscar en setup/conclusión, NO en descripción general
+      const setupM = fullText.match(/(?:setup|bias|sesgo|conclusi[oó]n)[^\n]{0,200}?(alcista|bajista|alza|baja|bull|bear)/i);
+      if (setupM) tendencia = /alcista|alza|bull/i.test(setupM[1]) ? "Alcista" : "Bajista";
+    }
+  })();
 
   // ── 3. Tipo de Operación ──────────────────────────────────────────────────
   let tipoOperacion = "--";
@@ -418,27 +435,26 @@ async function saveAsLatest() {
 
   // ── 9b. Análisis Order Flow — solo Interpretación ────────────────────────
   let analisisOrderFlow = "";
-  const ofBlock = block('an[aá]lisis\\s*(?:de\\s*)?order\\s*flow') || block('order\\s*flow');
+  const ofBlock = block('an[aá]lisis\\s*(?:de\\s*)?order\\s*flow(?:\\s*\\([^)]*\\))?') || block('order\\s*flow');
   if (ofBlock) {
-    const mOf = ofBlock.match(/interpretaci[oó]n\s*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    // Acepta cualquier sufijo tras "Interpretación": "Interpretación Cum. Delta:", "Interpretación:", etc.
+    const mOf = ofBlock.match(/interpretaci[oó]n[\w\s.]*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
     if (mOf && mOf[1].trim().length > 10) analisisOrderFlow = mOf[1].trim();
   }
-  // Fallback: buscar Interpretación directamente en fullText dentro del contexto OF
   if (!analisisOrderFlow) {
-    const mOf2 = fullText.match(/order\s*flow[\s\S]{0,800}?interpretaci[oó]n\s*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    const mOf2 = fullText.match(/order\s*flow[\s\S]{0,800}?interpretaci[oó]n[\w\s.]*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
     if (mOf2 && mOf2[1].trim().length > 10) analisisOrderFlow = mOf2[1].trim();
   }
 
   // ── 9c. Análisis GEXBot — solo Interpretación ─────────────────────────────
   let analisisGex = "";
-  const gxBlock = block('an[aá]lisis\\s*(?:de\\s*)?gex(?:bot)?(?:\\s*nivel\\s*\\d+)?') || block('gex(?:bot)?(?:\\s*nivel\\s*\\d+)?');
+  const gxBlock = block('an[aá]lisis\\s*(?:de\\s*)?gex(?:bot)?(?:\\s*nivel\\s*\\d+)?(?:\\s*\\([^)]*\\))?') || block('gex(?:bot)?(?:\\s*nivel\\s*\\d+)?');
   if (gxBlock) {
-    const mGx = gxBlock.match(/interpretaci[oó]n\s*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    const mGx = gxBlock.match(/interpretaci[oó]n[\w\s.]*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
     if (mGx && mGx[1].trim().length > 10) analisisGex = mGx[1].trim();
   }
-  // Fallback: buscar Interpretación dentro del contexto GEX
   if (!analisisGex) {
-    const mGx2 = fullText.match(/gex(?:bot)?[\s\S]{0,800}?interpretaci[oó]n\s*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    const mGx2 = fullText.match(/gex(?:bot)?[\s\S]{0,800}?interpretaci[oó]n[\w\s.]*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
     if (mGx2 && mGx2[1].trim().length > 10) analisisGex = mGx2[1].trim();
   }
 
