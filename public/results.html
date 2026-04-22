@@ -69,13 +69,29 @@
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
     #statusText { color: #94a3b8; }
     #retryBtn { margin-left: auto; padding: 4px 12px; border-radius: 6px; background: #334155; color: #e2e8f0; border: none; cursor: pointer; font-size: 13px; display: none; }
-    #retryBtn:hover { background: #475569; }
+    #refreshBtn:hover { background: #1d4ed8; transform: scale(1.03); }
+    #refreshBtn:active { transform: scale(.97); }
+    #refreshBtn:disabled { background: #334155; cursor: not-allowed; transform: none; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>MNQX Order Flow Analyst</h1>
-    <p class="subtitle">Análisis en tiempo real • Auto-refresh cada 60s</p>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <div>
+        <h1 style="margin:0 0 4px 0;">MNQX Order Flow Analyst</h1>
+        <p class="subtitle" style="margin:0;">Análisis en tiempo real • Auto-refresh cada 60s</p>
+      </div>
+      <button id="refreshBtn" onclick="manualRefresh()" style="
+        display:flex; align-items:center; gap:8px;
+        background:#1e40af; color:#fff; border:none; cursor:pointer;
+        padding:10px 18px; border-radius:8px; font-size:14px; font-weight:600;
+        box-shadow:0 2px 8px rgba(0,0,0,.3); transition:background .2s, transform .1s;
+        flex-shrink:0;
+      ">
+        <span id="refreshIcon" style="font-size:16px; display:inline-block; transition:transform .5s;">↻</span>
+        Actualizar Datos
+      </button>
+    </div>
 
     <div id="statusBar">
       <div id="statusDot" class="load"></div>
@@ -280,6 +296,20 @@
             : `⚠ ${err.message}`
         );
       }
+    }
+
+    // ── Botón Actualizar manual ───────────────────────────────────────────────
+    async function manualRefresh() {
+      const btn  = document.getElementById('refreshBtn');
+      const icon = document.getElementById('refreshIcon');
+      btn.disabled = true;
+      icon.style.transform = 'rotate(360deg)';
+      await loadLatestAnalysis();
+      setTimeout(() => {
+        icon.style.transform = 'rotate(0deg)';
+        icon.style.transition = 'none';
+        setTimeout(() => { icon.style.transition = 'transform .5s'; btn.disabled = false; }, 50);
+      }, 550);
     }
 
     setInterval(loadLatestAnalysis, 60000);
