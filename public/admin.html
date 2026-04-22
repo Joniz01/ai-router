@@ -69,7 +69,11 @@
       <div class="card">
         <h2>📝 System Prompts Guardados</h2>
         <div id="prompts-container"></div>
-        <button class="btn-primary" onclick="saveAll()" style="margin-top:20px;">💾 Guardar Cambios en Prompts</button>
+        <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-primary" onclick="saveAll()">💾 Guardar Cambios en Prompts</button>
+          <button onclick="resetPrompts()" style="background:#f59e0b; color:white; padding:11px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:600;">🔄 Resetear Defaults</button>
+          <button onclick="diagStorage()" style="background:#6b7280; color:white; padding:11px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:600;">🔍 Diagnóstico</button>
+        </div>
       </div>
     </div>
 
@@ -114,80 +118,138 @@
       document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === tab));
     }
 
+    // ── Parse seguro de localStorage ──────────────────────────────────────────
+    function safeGet(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        // Validar que sea un array con al menos un elemento con la estructura correcta
+        if (!Array.isArray(parsed) || parsed.length === 0) return null;
+        return parsed;
+      } catch(e) {
+        console.warn(`[localStorage] Dato corrupto en "${key}", reseteando.`);
+        localStorage.removeItem(key);
+        return null;
+      }
+    }
+
     function initData() {
-      if (!localStorage.getItem('geminiKeys')) {
+      if (!safeGet('geminiKeys')) {
         localStorage.setItem('geminiKeys', JSON.stringify([
           {name: "Gemini Principal", key: ""},
-          {name: "Gemini Backup 1", key: ""},
-          {name: "Gemini Backup 2", key: ""},
-          {name: "Gemini Backup 3", key: ""}
+          {name: "Gemini Backup 1",  key: ""},
+          {name: "Gemini Backup 2",  key: ""},
+          {name: "Gemini Backup 3",  key: ""}
         ]));
       }
-      if (!localStorage.getItem('groqKeys')) {
+      if (!safeGet('groqKeys')) {
         localStorage.setItem('groqKeys', JSON.stringify([
           {name: "Groq Principal", key: ""},
-          {name: "Groq Backup 1", key: ""},
-          {name: "Groq Backup 2", key: ""},
-          {name: "Groq Backup 3", key: ""}
+          {name: "Groq Backup 1",  key: ""},
+          {name: "Groq Backup 2",  key: ""},
+          {name: "Groq Backup 3",  key: ""}
         ]));
       }
-      if (!localStorage.getItem('systemPrompts')) {
+      if (!safeGet('systemPrompts')) {
         localStorage.setItem('systemPrompts', JSON.stringify([
+          {name: "MNQ Analyst", prompt: ""},
           {name: "Análisis Técnico", prompt: "Eres un experto en análisis técnico de gráficos financieros. Extrae valores con precisión."},
-          {name: "Análisis Detallado", prompt: "Analiza la imagen con mucho detalle, explica tendencias y patrones claros."},
-          {name: "Modo Simple", prompt: "Explica de forma clara y sencilla lo que ves en la imagen."},
-          {name: "Modo Trading", prompt: "Actúa como trader profesional. Analiza Open Interest y posibles implicaciones."}
+          {name: "Modo Simple", prompt: "Explica de forma clara y sencilla lo que ves en la imagen."}
         ]));
       }
+    }
+
+    // Resetea SOLO los prompts sin tocar las keys
+    function resetPrompts() {
+      if (!confirm('¿Resetear los System Prompts a los valores por defecto? Las API Keys no se tocarán.')) return;
+      localStorage.removeItem('systemPrompts');
+      initData();
+      renderPrompts();
+      renderSelectors();
+      alert('Prompts reseteados. Pega tu prompt MNQ en el campo "MNQ Analyst".');
+    }
+
+    // Diagnóstico rápido para ver qué hay en localStorage
+    function diagStorage() {
+      const keys   = safeGet('geminiKeys') || [];
+      const groq   = safeGet('groqKeys')   || [];
+      const prompts= safeGet('systemPrompts') || [];
+      const keysWithData = [...keys, ...groq].filter(k => k.key).length;
+      alert(`localStorage:\n• Gemini Keys: ${keys.length} slots, ${keys.filter(k=>k.key).length} con key\n• Groq Keys: ${groq.length} slots, ${groq.filter(k=>k.key).length} con key\n• System Prompts: ${prompts.length} slots\n\nSi ves 0 slots, haz clic en "Resetear Defaults".`);
     }
 
     function renderKeys() {
       const geminiKeys = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
-      const groqKeys = JSON.parse(localStorage.getItem('groqKeys') || '[]');
-      let html = '';
-      geminiKeys.forEach((item, i) => {
-        html += `<div class="key-slot">
-          <input type="text" value="${item.name}" onchange="updateKeyName('gemini', ${i}, this.value)">
-          <input type="password" value="${item.key}" placeholder="API Key Gemini" onchange="updateKeyValue('gemini', ${i}, this.value)">
-        </div>`;
-      });
-      document.getElementById('gemini-keys').innerHTML = html;
+      const groqKeys   = JSON.parse(localStorage.getItem('groqKeys')   || '[]');
 
-      html = '';
-      groqKeys.forEach((item, i) => {
-        html += `<div class="key-slot">
-          <input type="text" value="${item.name}" onchange="updateKeyName('groq', ${i}, this.value)">
-          <input type="password" value="${item.key}" placeholder="API Key Groq" onchange="updateKeyValue('groq', ${i}, this.value)">
-        </div>`;
-      });
-      document.getElementById('groq-keys').innerHTML = html;
+      function buildKeySlots(containerId, type, items) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        items.forEach((item, i) => {
+          const div  = document.createElement('div');
+          div.className = 'key-slot';
+
+          const nameInput = document.createElement('input');
+          nameInput.type  = 'text';
+          nameInput.value = item.name || '';
+          nameInput.addEventListener('change', () => updateKeyName(type, i, nameInput.value));
+
+          const keyInput = document.createElement('input');
+          keyInput.type  = 'password';
+          keyInput.value = item.key || '';
+          keyInput.placeholder = `API Key ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+          keyInput.addEventListener('change', () => updateKeyValue(type, i, keyInput.value));
+
+          div.appendChild(nameInput);
+          div.appendChild(keyInput);
+          container.appendChild(div);
+        });
+      }
+
+      buildKeySlots('gemini-keys', 'gemini', geminiKeys);
+      buildKeySlots('groq-keys',   'groq',   groqKeys);
     }
 
     function renderPrompts() {
-      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
-      let html = '';
+      const prompts   = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
+      const container = document.getElementById('prompts-container');
+      container.innerHTML = '';
+
       prompts.forEach((item, i) => {
-        html += `
-          <div style="margin-bottom:16px;">
-            <input type="text" value="${item.name}" style="width:32%" onchange="updatePromptName(${i}, this.value)">
-            <textarea style="width:66%; margin-left:2%" rows="3" onchange="updatePromptValue(${i}, this.value)">${item.prompt}</textarea>
-          </div>`;
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'margin-bottom:16px; display:flex; gap:12px; align-items:flex-start;';
+
+        const nameInput = document.createElement('input');
+        nameInput.type  = 'text';
+        nameInput.value = item.name || '';
+        nameInput.style.cssText = 'width:32%; flex-shrink:0;';
+        nameInput.addEventListener('change', () => updatePromptName(i, nameInput.value));
+
+        const ta = document.createElement('textarea');
+        ta.rows  = 4;
+        ta.style.cssText = 'flex:1; font-size:13px; line-height:1.5;';
+        ta.value = item.prompt || '';   // .value evita problemas con caracteres especiales
+        ta.addEventListener('change', () => updatePromptValue(i, ta.value));
+
+        wrapper.appendChild(nameInput);
+        wrapper.appendChild(ta);
+        container.appendChild(wrapper);
       });
-      document.getElementById('prompts-container').innerHTML = html;
     }
 
     function renderSelectors() {
-      const geminiKeys = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
-      const groqKeys = JSON.parse(localStorage.getItem('groqKeys') || '[]');
-      const prompts = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
+      const geminiKeys = safeGet('geminiKeys') || [];
+      const groqKeys   = safeGet('groqKeys')   || [];
+      const prompts    = safeGet('systemPrompts') || [];
 
       let html = '<option value="">-- Selecciona una Key --</option>';
       geminiKeys.forEach((k, i) => { if (k.key) html += `<option value="gemini:${i}">Gemini - ${k.name}</option>`; });
-      groqKeys.forEach((k, i) => { if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; });
+      groqKeys.forEach((k, i)   => { if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; });
       document.getElementById('selectedKey').innerHTML = html;
 
       html = '';
-      prompts.forEach((p, i) => html += `<option value="${i}">${p.name}</option>`);
+      prompts.forEach((p, i) => html += `<option value="${i}">${p.name || 'Prompt ' + (i+1)}</option>`);
       document.getElementById('selectedPrompt').innerHTML = html;
     }
 
