@@ -416,19 +416,31 @@ async function saveAsLatest() {
   const rg = block('resumen\\s*(?:general\\s*)?(?:del\\s*)?mercado');
   if (rg) resumenGeneral = rg;
 
-  // ── 9b. Análisis Order Flow ───────────────────────────────────────────────
+  // ── 9b. Análisis Order Flow — solo Interpretación ────────────────────────
   let analisisOrderFlow = "";
-  const of1 = block('an[aá]lisis\\s*(?:de\\s*)?order\\s*flow');
-  const of2 = block('order\\s*flow');
-  const ofRaw = of1 || of2;
-  if (ofRaw && ofRaw.length > 10) analisisOrderFlow = ofRaw;
+  const ofBlock = block('an[aá]lisis\\s*(?:de\\s*)?order\\s*flow') || block('order\\s*flow');
+  if (ofBlock) {
+    const mOf = ofBlock.match(/interpretaci[oó]n\s*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    if (mOf && mOf[1].trim().length > 10) analisisOrderFlow = mOf[1].trim();
+  }
+  // Fallback: buscar Interpretación directamente en fullText dentro del contexto OF
+  if (!analisisOrderFlow) {
+    const mOf2 = fullText.match(/order\s*flow[\s\S]{0,800}?interpretaci[oó]n\s*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    if (mOf2 && mOf2[1].trim().length > 10) analisisOrderFlow = mOf2[1].trim();
+  }
 
-  // ── 9c. Análisis GEXBot / GEX ─────────────────────────────────────────────
+  // ── 9c. Análisis GEXBot — solo Interpretación ─────────────────────────────
   let analisisGex = "";
-  const gx1 = block('an[aá]lisis\\s*(?:de\\s*)?gex(?:bot)?(?:\\s*nivel\\s*\\d+)?');
-  const gx2 = block('gex(?:bot)?(?:\\s*nivel\\s*\\d+)?');
-  const gxRaw = gx1 || gx2;
-  if (gxRaw && gxRaw.length > 10) analisisGex = gxRaw;
+  const gxBlock = block('an[aá]lisis\\s*(?:de\\s*)?gex(?:bot)?(?:\\s*nivel\\s*\\d+)?') || block('gex(?:bot)?(?:\\s*nivel\\s*\\d+)?');
+  if (gxBlock) {
+    const mGx = gxBlock.match(/interpretaci[oó]n\s*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    if (mGx && mGx[1].trim().length > 10) analisisGex = mGx[1].trim();
+  }
+  // Fallback: buscar Interpretación dentro del contexto GEX
+  if (!analisisGex) {
+    const mGx2 = fullText.match(/gex(?:bot)?[\s\S]{0,800}?interpretaci[oó]n\s*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
+    if (mGx2 && mGx2[1].trim().length > 10) analisisGex = mGx2[1].trim();
+  }
 
   // ── 10. Consideraciones (desde Setup Recomendado) ─────────────────────────
   let consideraciones = "";
