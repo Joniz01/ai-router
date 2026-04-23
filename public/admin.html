@@ -100,9 +100,9 @@
 
         <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px; margin-bottom:6px; cursor:pointer;" onclick="toggleDropZone()">
           <label style="cursor:pointer; margin:0;">Imagen para analizar</label>
-          <span id="dropToggleIcon" style="font-size:18px; color:#6b7280; font-weight:bold; user-select:none;">▼</span>
+          <span id="dropToggleIcon" style="font-size:18px; color:#6b7280; font-weight:bold; user-select:none;">▶</span>
         </div>
-        <div id="dropZoneWrap">
+        <div id="dropZoneWrap" style="display:none;">
           <div id="imageDrop" class="drop-zone">
             <p><strong>📸 Pega la imagen aquí con CTRL + V</strong><br>o arrastra desde tu escritorio</p>
             <img id="imagePreview" style="max-width:100%; max-height:420px; display:none; border-radius:10px; margin-top:15px;" alt="preview">
@@ -240,8 +240,15 @@
 
       let html = '<option value="">-- Selecciona una Key --</option>';
       geminiKeys.forEach((k, i) => { if (k.key) html += `<option value="gemini:${i}">Gemini - ${k.name}</option>`; });
-      groqKeys.forEach((k, i) => { if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; });
+      groqKeys.forEach((k, i)   => { if (k.key) html += `<option value="groq:${i}">Groq - ${k.name}</option>`; });
       document.getElementById('selectedKey').innerHTML = html;
+      // Pre-seleccionar primera key disponible
+      const firstKey = geminiKeys.find(k => k.key) || groqKeys.find(k => k.key);
+      if (firstKey) {
+        const type  = geminiKeys.includes(firstKey) ? 'gemini' : 'groq';
+        const idx   = (type === 'gemini' ? geminiKeys : groqKeys).indexOf(firstKey);
+        document.getElementById('selectedKey').value = `${type}:${idx}`;
+      }
 
       html = '';
       prompts.forEach((p, i) => html += `<option value="${i}">${p.name}</option>`);
@@ -731,4 +738,5 @@ async function saveAsLatest() {
   </script>
 </body>
 </html>
+
 
