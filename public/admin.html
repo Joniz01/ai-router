@@ -98,10 +98,15 @@
         <label>Mensaje adicional (opcional)</label>
         <textarea id="message" rows="3" placeholder="Ej: Extrae los valores más importantes del Open Interest..."></textarea>
 
-        <label>Imagen para analizar</label>
-        <div id="imageDrop" class="drop-zone">
-          <p><strong>📸 Pega la imagen aquí con CTRL + V</strong><br>o arrastra desde tu escritorio</p>
-          <img id="imagePreview" style="max-width:100%; max-height:420px; display:none; border-radius:10px; margin-top:15px;" alt="preview">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px; margin-bottom:6px; cursor:pointer;" onclick="toggleDropZone()">
+          <label style="cursor:pointer; margin:0;">Imagen para analizar</label>
+          <span id="dropToggleIcon" style="font-size:18px; color:#6b7280; font-weight:bold; user-select:none;">▼</span>
+        </div>
+        <div id="dropZoneWrap">
+          <div id="imageDrop" class="drop-zone">
+            <p><strong>📸 Pega la imagen aquí con CTRL + V</strong><br>o arrastra desde tu escritorio</p>
+            <img id="imagePreview" style="max-width:100%; max-height:420px; display:none; border-radius:10px; margin-top:15px;" alt="preview">
+          </div>
         </div>
 
         <div style="margin-top: 25px;">
@@ -298,17 +303,23 @@
       document.getElementById('customPromptWrap').style.display = val === 'custom' ? 'block' : 'none';
     }
 
-    // Construye el body de la solicitud para el provider/model dados
+    function toggleDropZone() {
+      const wrap = document.getElementById('dropZoneWrap');
+      const icon = document.getElementById('dropToggleIcon');
+      const isOpen = wrap.style.display !== 'none';
+      wrap.style.display = isOpen ? 'none' : 'block';
+      icon.textContent   = isOpen ? '▶' : '▼';
+    }
+
+    // Construye el body de la solicitud para el provider/model dados.
+    // Si no hay imagen (modo custom de texto puro), omite el campo image.
     function buildBody(provider, apiKey, model, systemPrompt, message) {
-      return {
-        provider, apiKey, model,
-        messages: [{
-          role: "user",
-          content: message || "Analiza esta imagen con mucha atención y extrae todos los niveles de precio, Open Interest, soportes, resistencias y cualquier dato numérico visible con precisión.",
-          image: currentImageBase64
-        }],
-        systemPrompt
-      };
+      const msgContent = message || (currentImageBase64
+        ? "Analiza esta imagen con mucha atención y extrae todos los niveles de precio, Open Interest, soportes, resistencias y cualquier dato numérico visible con precisión."
+        : "Responde la instrucción del system prompt.");
+      const msgObj = { role: "user", content: msgContent };
+      if (currentImageBase64) msgObj.image = currentImageBase64;
+      return { provider, apiKey, model, messages: [msgObj], systemPrompt };
     }
 
     // Intenta una llamada con stream; retorna el texto acumulado o lanza error
@@ -370,8 +381,9 @@
       const message     = document.getElementById("message").value.trim();
       const output      = document.getElementById("output");
 
-      if (!keySelect)          return output.innerHTML = "<span class=\"error\">Selecciona una API Key</span>";
-      if (!currentImageBase64) return output.innerHTML = "<span class=\"error\">Pega una imagen primero</span>";
+      if (!keySelect) return output.innerHTML = "<span class=\"error\">Selecciona una API Key</span>";
+      // En modo custom la imagen es opcional — la consulta puede ser solo texto
+      if (promptIndex !== "custom" && !currentImageBase64) return output.innerHTML = "<span class=\"error\">Pega una imagen primero</span>";
 
       const [provider, keyIndex] = keySelect.split(":");
       const keys        = JSON.parse(localStorage.getItem(provider + "Keys") || "[]");
@@ -435,10 +447,13 @@
         try {
           const body = buildBody(att.provider, att.apiKey, att.model, systemPrompt, message);
           await attemptStream(body, output, label);
-          // Éxito
-          const badge = att.provider === "groq" && provider === "gemini"
-            ? `<br><br><span class="status" style="background:#fef3c7;color:#92400e;">⚡ Completado con Groq (fallback)</span>`
-            : `<br><br><span class="success">✅ Análisis completado</span>`;
+          // Éxito — mostrar modelo que respondió
+          let badge;
+          if (att.provider === "groq" && provider === "gemini") {
+            badge = `<br><br><span class="status" style="background:#fef3c7;color:#92400e;">⚡ Completado · Groq (${att.model}) — fallback</span>`;
+          } else {
+            badge = `<br><br><span class="success">✅ Completado · ${att.provider.toUpperCase()} · ${att.model}</span>`;
+          }
           output.innerHTML += badge;
           return;  // salir del loop — éxito
         } catch(err) {
@@ -716,3 +731,4 @@ async function saveAsLatest() {
   </script>
 </body>
 </html>
+
