@@ -158,8 +158,8 @@
       if (!lsGet('systemPrompts')) {
         localStorage.setItem('systemPrompts', JSON.stringify([
           {name: "MNQ Analyst",      prompt: ""},
-          {name: "Análisis Técnico", prompt: "Eres un experto en análisis técnico de gráficos financieros. Extrae valores con precisión."},
-          {name: "Modo Simple",      prompt: "Explica de forma clara y sencilla lo que ves en la imagen."}
+          {name: "Análisis Técnico", prompt: ""},
+          {name: "Modo Simple",      prompt: ""}
         ]));
       }
     }
@@ -485,23 +485,45 @@ async function saveAsLatest() {
   if (precioActual === "--") { const m = fullText.match(/(\d{5,}(?:\.\d{1,2})?)/); if (m) precioActual = m[1]; }
 
   // ── 2. Tendencia ──────────────────────────────────────────────────────────
-  // FUENTE PRIMARIA: texto de "Interpretación Cum. Delta" — más preciso que scan global
-  // El texto global contiene palabras como "alcista", "compradora" en contextos descriptivos
-  // que no reflejan la conclusión real del Cum. Delta
+  // ── Tendencia desde Cum.Delta ─────────────────────────────────────────────
+  // Fuente 1: Interpretación del Cum.Delta en sección Order Flow
+  // Fuente 2: Valor numérico del Cum.Delta (negativo = bajista)
+  // Fuente 3: Fallback en setup/sesgo
   let tendencia = "--";
   (function() {
-    // 1. Buscar bloque de Interpretación Cum. Delta
-    const mInterp = fullText.match(/interpretaci[oó]n[\w\s.]*cum[\s.]*delta[\w\s.]*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
-    const interpText = mInterp ? mInterp[1] : fullText;
+    // Buscar el bloque de Interpretación dentro de Order Flow
+    // El nuevo prompt produce: "* **Interpretación:** Cum.Delta actual: -6408 (decreciendo)..."
+    const mInterp = fullText.match(/interpretaci[oó]n[\w\s.]*:[\*\s]*([\s\S]*?)(?=
+\s*\*\s*\*{2}|
+\s*
+\s*\d|\s*$)/i);
+    const interpText = mInterp ? mInterp[1] : "";
 
-    const baj = (interpText.match(/\b(negativ[oa]|bajista|vendedor[ao]|bearish|bajando|presión vendedor)\b/gi) || []).length;
-    const alc = (interpText.match(/\b(positiv[oa]|alcista|comprador[ao]|bullish|subiendo)\b/gi) || []).length;
+    // Intentar leer el valor numérico del Cum.Delta directamente
+    // Patrones: "Cum.Delta actual: -6408", "Cum.Delta: -5829", "cum delta ... -6408"
+    const mCumVal = fullText.match(/cum[\s.*]*delta[^\d-]*(-?\d{3,6})/i);
+    const cumVal  = mCumVal ? parseInt(mCumVal[1]) : null;
 
-    if (baj > alc)       tendencia = "Bajista";
-    else if (alc > baj)  tendencia = "Alcista";
-    else {
-      // Empate o sin Cum. Delta — fallback: buscar en setup/conclusión, NO en descripción general
-      const setupM = fullText.match(/(?:setup|bias|sesgo|conclusi[oó]n)[^\n]{0,200}?(alcista|bajista|alza|baja|bull|bear)/i);
+    // Detectar dirección: "creciendo"/"aumentando" vs "decreciendo"/"disminuyendo"
+    const cumText = fullText.match(/cum[\s.*]*delta[\s\S]{0,300}/i)?.[0] || "";
+    const creciendo    = /creciendo|aumentando|positiv[oa]|recuper/i.test(cumText);
+    const decreciendo  = /decreciendo|disminuyendo|profundiz|agrav/i.test(cumText);
+
+    // Señales en el texto de interpretación
+    const baj = ((interpText || fullText).match(/(negativ[oa]|bajista|vendedor[ao]|bearish|bajando|dominan vendedor|presión vendedor)/gi) || []).length;
+    const alc = ((interpText || fullText).match(/(positiv[oa]|alcista|comprador[ao]|bullish|subiendo|dominan comprador)/gi) || []).length;
+
+    // Decisión: valor numérico negativo = bajista, positivo = alcista
+    if (cumVal !== null) {
+      tendencia = cumVal < 0 ? "Bajista" : "Alcista";
+    } else if (baj > alc) {
+      tendencia = "Bajista";
+    } else if (alc > baj) {
+      tendencia = "Alcista";
+    } else {
+      // Último fallback: buscar en setup
+      const setupM = fullText.match(/(?:setup|bias|sesgo|conclusi[oó]n)[^
+]{0,200}?(alcista|bajista|alza|baja|bull|bear)/i);
       if (setupM) tendencia = /alcista|alza|bull/i.test(setupM[1]) ? "Alcista" : "Bajista";
     }
   })();
