@@ -84,7 +84,15 @@
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
           <div><label>Key a usar</label><select id="selectedKey"></select></div>
-          <div><label>System Prompt a usar</label><select id="selectedPrompt"></select></div>
+          <div>
+            <label>System Prompt a usar</label>
+            <select id="selectedPrompt" onchange="toggleCustomPrompt(this.value)"></select>
+            <div id="customPromptWrap" style="display:none; margin-top:10px;">
+              <textarea id="customPromptText" rows="5"
+                style="width:100%; font-size:13px; line-height:1.5; border:2px solid #10b981; border-radius:8px; padding:10px;"
+                placeholder="Escribe aquí tu instrucción para la IA..."></textarea>
+            </div>
+          </div>
         </div>
 
         <label>Mensaje adicional (opcional)</label>
@@ -232,6 +240,7 @@
 
       html = '';
       prompts.forEach((p, i) => html += `<option value="${i}">${p.name}</option>`);
+      html += '<option value="custom">✏️ Escriba su instrucción</option>';
       document.getElementById('selectedPrompt').innerHTML = html;
     }
 
@@ -284,6 +293,10 @@
     }
 
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function toggleCustomPrompt(val) {
+      document.getElementById('customPromptWrap').style.display = val === 'custom' ? 'block' : 'none';
+    }
 
     // Construye el body de la solicitud para el provider/model dados
     function buildBody(provider, apiKey, model, systemPrompt, message) {
@@ -363,8 +376,14 @@
       const [provider, keyIndex] = keySelect.split(":");
       const keys        = JSON.parse(localStorage.getItem(provider + "Keys") || "[]");
       const apiKey      = keys[keyIndex].key;
-      const prompts     = JSON.parse(localStorage.getItem("systemPrompts") || "[]");
-      const systemPrompt = prompts[promptIndex].prompt;
+      let systemPrompt;
+      if (promptIndex === "custom") {
+        systemPrompt = document.getElementById("customPromptText").value.trim();
+        if (!systemPrompt) return output.innerHTML = "<span class=\"error\">Escribe una instrucción antes de analizar</span>";
+      } else {
+        const prompts = JSON.parse(localStorage.getItem("systemPrompts") || "[]");
+        systemPrompt  = prompts[promptIndex]?.prompt || "";
+      }
 
       // Construir la secuencia de intentos:
       // Si es Gemini: [gemini-2.5-flash x3, gemini-2.0-flash x3, groq-fallback x1]
@@ -507,14 +526,31 @@ async function saveAsLatest() {
   })();
 
   // ── 3. Tipo de Operación ──────────────────────────────────────────────────
+  // Fuente 1: campo explícito "Tipo de Operación: Short/Long" (nuevo prompt)
+  // Fuente 2: palabras clave en contexto del Setup
+  // Fuente 3: fallback matemático — si Entrada > StopLoss → Short; Entrada < StopLoss → Long
   let tipoOperacion = "--";
-  const opM = fullText.match(/(?:tipo\s*de\s*operaci[oó]n|operaci[oó]n|setup)[:\s\S]{0,80}?(compra|largo|long|venta|corto|short)/i);
-  if (opM) {
-    tipoOperacion = /compra|largo|long/i.test(opM[1]) ? "Compra (Largo)" : "Venta (Short)";
-  } else {
-    if      (/\b(compra|largo|long)\b/i.test(fullText))  tipoOperacion = "Compra (Largo)";
-    else if (/\b(venta|corto|short)\b/i.test(fullText))  tipoOperacion = "Venta (Short)";
-  }
+  (function() {
+    // Fuente 1: línea explícita "Tipo de Operación: Short" o "Long"
+    const mTipo = fullText.match(/tipo\s*de\s*operaci[oó]n\s*:?[\*\s]*(short|long|venta|compra|corto|largo)/i);
+    if (mTipo) { tipoOperacion = /long|compra|largo/i.test(mTipo[1]) ? "Compra (Largo)" : "Venta (Short)"; return; }
+
+    // Fuente 2: palabras clave cerca del Setup
+    const setupCtx = fullText.match(/setup\s*recomendado[\s\S]{0,300}/i)?.[0] || fullText;
+    const mSetup = setupCtx.match(/\b(short|long|venta|compra|corto|largo)\b/i);
+    if (mSetup) { tipoOperacion = /long|compra|largo/i.test(mSetup[1]) ? "Compra (Largo)" : "Venta (Short)"; return; }
+
+    // Fuente 3: fallback matemático (entrada vs stop loss)
+    const mEnt = fullText.match(/entrada\s*:[^\d]{0,50}?([0-9]{5,}(?:\.[0-9]{1,2})?)/i);
+    const mSL  = fullText.match(/stop[\s-]*loss\s*:[\*\s]*([0-9]{5,}(?:\.[0-9]{1,2})?)/i);
+    if (mEnt && mSL) {
+      const ent = parseFloat(mEnt[1]);
+      const sl  = parseFloat(mSL[1]);
+      if (!isNaN(ent) && !isNaN(sl) && ent !== sl) {
+        tipoOperacion = ent > sl ? "Venta (Short)" : "Compra (Largo)";
+      }
+    }
+  })();
 
   // ── 4. Confluencia / Probabilidad ─────────────────────────────────────────
   // PRIORIDAD: **Probabilidad:** 85% > header (Confluencia > 80%)
