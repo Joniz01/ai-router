@@ -118,25 +118,28 @@
       document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === tab));
     }
 
-    // lsRead: parsea localStorage de forma segura.
-    // Retorna null si: no existe, vacío, array vacío, JSON inválido, o tipo incorrecto.
-    // Solo retorna el valor si es un array CON elementos → garantiza que renderKeys/Prompts
-    // siempre tenga datos para iterar. Esto resuelve el bug de campos vacíos.
-    function lsRead(key) {
+    // ── Migración de localStorage ─────────────────────────────────────────────
+    // Lee el valor raw, intenta parsearlo, y si está en un formato inválido
+    // o es un array vacío lo trata como "no existe" para que initData lo cree.
+    // NO borra datos existentes válidos — solo detecta corrupción silenciosa.
+    function lsGet(key) {
       try {
         const raw = localStorage.getItem(key);
         if (!raw) return null;
         const val = JSON.parse(raw);
-        if (Array.isArray(val) && val.length > 0) return val;
-        return null;
+        // Debe ser array con al menos 1 elemento con las propiedades correctas
+        if (!Array.isArray(val) || val.length === 0) return null;
+        // Migrar formato: si los objetos no tienen 'name'/'key' o 'name'/'prompt', resetear
+        if (key.endsWith('Keys') && !('key' in val[0]))    return null;
+        if (key === 'systemPrompts' && !('prompt' in val[0])) return null;
+        return val;
       } catch(e) {
-        localStorage.removeItem(key);
         return null;
       }
     }
 
     function initData() {
-      if (!lsRead('geminiKeys')) {
+      if (!lsGet('geminiKeys')) {
         localStorage.setItem('geminiKeys', JSON.stringify([
           {name: "Gemini Principal", key: ""},
           {name: "Gemini Backup 1",  key: ""},
@@ -144,7 +147,7 @@
           {name: "Gemini Backup 3",  key: ""}
         ]));
       }
-      if (!lsRead('groqKeys')) {
+      if (!lsGet('groqKeys')) {
         localStorage.setItem('groqKeys', JSON.stringify([
           {name: "Groq Principal", key: ""},
           {name: "Groq Backup 1",  key: ""},
@@ -152,7 +155,7 @@
           {name: "Groq Backup 3",  key: ""}
         ]));
       }
-      if (!lsRead('systemPrompts')) {
+      if (!lsGet('systemPrompts')) {
         localStorage.setItem('systemPrompts', JSON.stringify([
           {name: "MNQ Analyst",      prompt: ""},
           {name: "Análisis Técnico", prompt: "Eres un experto en análisis técnico de gráficos financieros. Extrae valores con precisión."},
@@ -162,7 +165,7 @@
     }
 
     function resetPrompts() {
-      if (!confirm('¿Resetear los System Prompts a valores por defecto? Las API Keys no se tocarán.')) return;
+      if (!confirm('¿Resetear los System Prompts? Las API Keys no se tocarán.')) return;
       localStorage.removeItem('systemPrompts');
       initData();
       renderPrompts();
@@ -170,28 +173,21 @@
     }
 
     function diagStorage() {
-      try {
-        const gk = JSON.parse(localStorage.getItem('geminiKeys') || '[]');
-        const rk = JSON.parse(localStorage.getItem('groqKeys')   || '[]');
-        const sp = JSON.parse(localStorage.getItem('systemPrompts') || '[]');
-        alert(
-          'Estado localStorage:
-' +
-          '• Gemini Keys: ' + gk.length + ' slots, ' + gk.filter(k=>k.key).length + ' con key
-' +
-          '• Groq Keys: '   + rk.length + ' slots, ' + rk.filter(k=>k.key).length + ' con key
-' +
-          '• Prompts: '     + sp.length + ' slots
-
-' +
-          (gk.length===0||rk.length===0||sp.length===0 ? '⚠ Slots vacíos. Usa Resetear.' : '✅ Todo OK')
-        );
-      } catch(e) { alert('Error leyendo localStorage: ' + e.message); }
+      const gk = lsGet('geminiKeys') || [];
+      const rk = lsGet('groqKeys')   || [];
+      const sp = lsGet('systemPrompts') || [];
+      alert(
+        'Estado localStorage:\n' +
+        '• Gemini Keys: ' + gk.length + ' slots, ' + gk.filter(k=>k.key).length + ' con key\n' +
+        '• Groq Keys: '   + rk.length + ' slots, ' + rk.filter(k=>k.key).length + ' con key\n' +
+        '• Prompts: '     + sp.length + ' slots\n\n' +
+        (gk.length===0||rk.length===0||sp.length===0 ? '⚠ Slots vacíos detectados. Recarga la página.' : '✅ Todo OK')
+      );
     }
 
     function renderKeys() {
-      const geminiKeys = lsRead('geminiKeys') || [];
-      const groqKeys   = lsRead('groqKeys')   || [];
+      const geminiKeys = lsGet('geminiKeys') || [];
+      const groqKeys   = lsGet('groqKeys')   || [];
       let html = '';
       geminiKeys.forEach((item, i) => {
         html += `<div class="key-slot">
@@ -212,7 +208,7 @@
     }
 
     function renderPrompts() {
-      const prompts = lsRead('systemPrompts') || [];
+      const prompts = lsGet('systemPrompts') || [];
       let html = '';
       prompts.forEach((item, i) => {
         html += `
@@ -225,9 +221,9 @@
     }
 
     function renderSelectors() {
-      const geminiKeys = lsRead('geminiKeys')    || [];
-      const groqKeys   = lsRead('groqKeys')      || [];
-      const prompts    = lsRead('systemPrompts') || [];
+      const geminiKeys = lsGet('geminiKeys')    || [];
+      const groqKeys   = lsGet('groqKeys')      || [];
+      const prompts    = lsGet('systemPrompts') || [];
 
       let html = '<option value="">-- Selecciona una Key --</option>';
       geminiKeys.forEach((k, i) => { if (k.key) html += `<option value="gemini:${i}">Gemini - ${k.name}</option>`; });
@@ -271,115 +267,172 @@
       setTimeout(() => status.remove(), 2500);
     }
 
-    // ── Retry + fallback config ───────────────────────────────────────────────
-    const GEMINI_MODELS   = ["gemini-2.5-flash", "gemini-2.0-flash"];
-    const GROQ_MODEL      = "meta-llama/llama-4-scout-17b-16e-instruct";
-    const MAX_RETRIES     = 3;
-    const RETRY_BASE_MS   = 2000;
-    const RETRYABLE_CODES = new Set([429, 500, 502, 503, 504]);
-    const RETRYABLE_MSGS  = ["high demand", "overloaded", "rate limit", "quota", "try again", "temporarily"];
+    // ── Configuración de reintentos y fallbacks ──────────────────────────────
+    const GEMINI_MODELS    = ["gemini-2.5-flash", "gemini-2.0-flash"];  // orden de prioridad
+    const GROQ_MODEL       = "meta-llama/llama-4-scout-17b-16e-instruct";
+    const MAX_RETRIES      = 3;
+    const RETRY_BASE_MS    = 2000;   // backoff: 2s, 4s, 8s
+    // Códigos HTTP que ameritan reintento
+    const RETRYABLE_CODES  = new Set([429, 500, 502, 503, 504]);
+    // Strings en el mensaje de error que indican sobrecarga temporal
+    const RETRYABLE_MSGS   = ["high demand", "overloaded", "rate limit", "quota", "try again", "temporarily"];
 
-    function isRetryable(v) {
-      if (typeof v === 'number') return RETRYABLE_CODES.has(v);
-      return RETRYABLE_MSGS.some(s => String(v).toLowerCase().includes(s));
+    function isRetryable(statusOrMsg) {
+      if (typeof statusOrMsg === 'number') return RETRYABLE_CODES.has(statusOrMsg);
+      const m = String(statusOrMsg).toLowerCase();
+      return RETRYABLE_MSGS.some(s => m.includes(s));
     }
+
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+    // Construye el body de la solicitud para el provider/model dados
     function buildBody(provider, apiKey, model, systemPrompt, message) {
       return {
         provider, apiKey, model,
-        messages: [{ role: "user",
+        messages: [{
+          role: "user",
           content: message || "Analiza esta imagen con mucha atención y extrae todos los niveles de precio, Open Interest, soportes, resistencias y cualquier dato numérico visible con precisión.",
-          image: currentImageBase64 }],
+          image: currentImageBase64
+        }],
         systemPrompt
       };
     }
 
-    async function attemptStream(body, output) {
-      const res = await fetch(ENDPOINT, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+    // Intenta una llamada con stream; retorna el texto acumulado o lanza error
+    async function attemptStream(body, output, label) {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
       if (!res.ok) {
-        let msg = `HTTP ${res.status}`;
-        try { const e = await res.clone().json(); msg = e.error?.message || msg; } catch {}
-        const err = new Error(msg); err.status = res.status; throw err;
+        let errMsg = `HTTP ${res.status}`;
+        try { const e = await res.clone().json(); errMsg = e.error?.message || errMsg; } catch {}
+        const err = new Error(errMsg);
+        err.status = res.status;
+        throw err;
       }
-      const reader = res.body.getReader();
+
+      const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let accumulated = "";
+
       output.innerHTML = "";
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
+
         buffer += decoder.decode(value, { stream: true });
         let pos;
         while ((pos = buffer.indexOf("\n\n")) !== -1) {
-          const event = buffer.substring(0, pos); buffer = buffer.substring(pos + 2);
+          const event = buffer.substring(0, pos);
+          buffer = buffer.substring(pos + 2);
           if (!event.startsWith("data: ")) continue;
           const dataStr = event.substring(6).trim();
           if (!dataStr || dataStr === "[DONE]") continue;
           try {
             const data = JSON.parse(dataStr);
-            if (data.chunk) { output.innerHTML += data.chunk.replace(/\n/g,"<br>"); output.scrollTop = output.scrollHeight; }
-            else if (data.error) { const e = new Error(data.error); e.status = 503; throw e; }
+            if (data.chunk) {
+              accumulated += data.chunk;
+              output.innerHTML += data.chunk.replace(/\n/g, "<br>");
+              output.scrollTop = output.scrollHeight;
+            } else if (data.error) {
+              const err = new Error(data.error);
+              err.status = 503;
+              throw err;
+            }
           } catch(e) { if (e.status) throw e; }
         }
       }
+      return accumulated;
     }
 
-    // Streaming con retry automático + fallback de modelo + fallback a Groq
+    // Streaming con retry + fallback de modelo + fallback a Groq
     async function sendTest() {
       const keySelect   = document.getElementById("selectedKey").value;
       const promptIndex = document.getElementById("selectedPrompt").value;
       const message     = document.getElementById("message").value.trim();
       const output      = document.getElementById("output");
 
-      if (!keySelect)          return output.innerHTML = '<span class="error">Selecciona una API Key</span>';
-      if (!currentImageBase64) return output.innerHTML = '<span class="error">Pega una imagen primero</span>';
+      if (!keySelect)          return output.innerHTML = "<span class=\"error\">Selecciona una API Key</span>";
+      if (!currentImageBase64) return output.innerHTML = "<span class=\"error\">Pega una imagen primero</span>";
 
       const [provider, keyIndex] = keySelect.split(":");
-      const keys         = JSON.parse(localStorage.getItem(provider + "Keys") || "[]");
-      const apiKey       = keys[keyIndex].key;
-      const prompts      = JSON.parse(localStorage.getItem("systemPrompts") || "[]");
+      const keys        = JSON.parse(localStorage.getItem(provider + "Keys") || "[]");
+      const apiKey      = keys[keyIndex].key;
+      const prompts     = JSON.parse(localStorage.getItem("systemPrompts") || "[]");
       const systemPrompt = prompts[promptIndex].prompt;
 
-      // Secuencia de intentos: Gemini x3 por modelo + Groq fallback; Groq directo x3
+      // Construir la secuencia de intentos:
+      // Si es Gemini: [gemini-2.5-flash x3, gemini-2.0-flash x3, groq-fallback x1]
+      // Si es Groq:   [groq x3]
       const attempts = [];
       if (provider === "gemini") {
-        for (const model of GEMINI_MODELS)
-          for (let r = 0; r < MAX_RETRIES; r++) attempts.push({ provider:"gemini", apiKey, model });
-        const groqKey = (JSON.parse(localStorage.getItem("groqKeys")||"[]")).find(k=>k.key);
-        if (groqKey) attempts.push({ provider:"groq", apiKey:groqKey.key, model:GROQ_MODEL });
+        for (const model of GEMINI_MODELS) {
+          for (let r = 0; r < MAX_RETRIES; r++) attempts.push({ provider: "gemini", apiKey, model });
+        }
+        // Fallback final a Groq si hay key disponible
+        const groqKeys = JSON.parse(localStorage.getItem("groqKeys") || "[]");
+        const groqKey  = groqKeys.find(k => k.key);
+        if (groqKey) attempts.push({ provider: "groq", apiKey: groqKey.key, model: GROQ_MODEL });
       } else {
-        for (let r = 0; r < MAX_RETRIES; r++) attempts.push({ provider:"groq", apiKey, model:GROQ_MODEL });
+        for (let r = 0; r < MAX_RETRIES; r++) attempts.push({ provider: "groq", apiKey, model: GROQ_MODEL });
       }
 
       let lastError = null;
+
       for (let i = 0; i < attempts.length; i++) {
-        const att = attempts[i];
-        const modelIdx = attempts.slice(0,i).filter(a=>a.model===att.model).length;
+        const att      = attempts[i];
+        const isRetry  = i > 0 && attempts[i-1].model === att.model;
+        const isFallbackModel = i > 0 && attempts[i-1].model !== att.model;
+        const retryNum = isRetry ? (i % MAX_RETRIES) + 1 : 1;
+
+        // Calcular qué intento es dentro del modelo actual
+        const modelAttemptIdx = attempts.slice(0, i).filter(a => a.model === att.model).length;
+
+        // Etiqueta para el status
         let label;
-        if (modelIdx === 0) {
-          label = att.provider==="groq" && provider==="gemini"
-            ? "⚡ Gemini no disponible — usando Groq como fallback..."
-            : `Analizando con ${att.provider.toUpperCase()} (${att.model})...`;
+        if (modelAttemptIdx === 0 && !isFallbackModel) {
+          label = `Analizando con ${att.provider.toUpperCase()} (${att.model})...`;
+        } else if (att.provider === "groq" && provider === "gemini") {
+          label = `⚡ Gemini no disponible — usando Groq como fallback...`;
         } else {
-          const ws = Math.round(RETRY_BASE_MS * Math.pow(2, modelIdx-1) / 1000);
-          label = `⏳ Reintento ${modelIdx}/${MAX_RETRIES} — ${att.model} (espera ${ws}s)...`;
+          const waitSec = Math.round(RETRY_BASE_MS * Math.pow(2, modelAttemptIdx - 1) / 1000);
+          label = isFallbackModel
+            ? `🔄 Fallback a ${att.model}...`
+            : `⏳ Reintento ${modelAttemptIdx}/${MAX_RETRIES} con ${att.model} (espera ${waitSec}s)...`;
         }
+
         output.innerHTML = `<span class="status success">${label}</span><br>`;
-        if (modelIdx > 0) await sleep(RETRY_BASE_MS * Math.pow(2, modelIdx-1));
+
+        // Espera backoff exponencial en reintentos (no en el primero de cada modelo)
+        if (modelAttemptIdx > 0) {
+          await sleep(RETRY_BASE_MS * Math.pow(2, modelAttemptIdx - 1));
+        }
+
         try {
-          await attemptStream(buildBody(att.provider, att.apiKey, att.model, systemPrompt, message), output);
-          const badge = att.provider==="groq" && provider==="gemini"
-            ? '<br><br><span class="status" style="background:#fef3c7;color:#92400e;">⚡ Completado con Groq (fallback)</span>'
-            : '<br><br><span class="success">✅ Análisis completado</span>';
+          const body = buildBody(att.provider, att.apiKey, att.model, systemPrompt, message);
+          await attemptStream(body, output, label);
+          // Éxito
+          const badge = att.provider === "groq" && provider === "gemini"
+            ? `<br><br><span class="status" style="background:#fef3c7;color:#92400e;">⚡ Completado con Groq (fallback)</span>`
+            : `<br><br><span class="success">✅ Análisis completado</span>`;
           output.innerHTML += badge;
-          return;
+          return;  // salir del loop — éxito
         } catch(err) {
           lastError = err;
-          if (!isRetryable(err.status || err.message))
-            while (i+1 < attempts.length && attempts[i+1].model === att.model) i++;
-          if (i === attempts.length-1)
+          // Si el error NO es retryable, no tiene sentido seguir con este modelo
+          if (!isRetryable(err.status || err.message)) {
+            // Saltar todos los reintentos pendientes del modelo actual
+            while (i + 1 < attempts.length && attempts[i+1].model === att.model) i++;
+          }
+          // Si quedan más intentos, continuar; si no, mostrar error final
+          if (i === attempts.length - 1) {
             output.innerHTML += `<br><span class="error">❌ Todos los intentos fallaron: ${lastError.message}</span>`;
+          }
         }
       }
     }
@@ -431,30 +484,26 @@ async function saveAsLatest() {
   let precioActual = px(/precio\s*(?:actual)?[:\s]*(\d{5,}(?:\.\d{1,2})?)/i);
   if (precioActual === "--") { const m = fullText.match(/(\d{5,}(?:\.\d{1,2})?)/); if (m) precioActual = m[1]; }
 
-  // ── 2. Tendencia desde Cum.Delta ─────────────────────────────────────────
-  // Prioridad: 1) valor numérico del Cum.Delta  2) texto de interpretación  3) fallback setup
+  // ── 2. Tendencia ──────────────────────────────────────────────────────────
+  // FUENTE PRIMARIA: texto de "Interpretación Cum. Delta" — más preciso que scan global
+  // El texto global contiene palabras como "alcista", "compradora" en contextos descriptivos
+  // que no reflejan la conclusión real del Cum. Delta
   let tendencia = "--";
   (function() {
-    // Fuente 1: valor numérico — negativo=bajista, positivo=alcista
-    const mCumVal = fullText.match(/cum[\s.*]*delta[^\d-]*(-?\d{3,6})/i);
-    const cumVal  = mCumVal ? parseInt(mCumVal[1]) : null;
-    if (cumVal !== null) { tendencia = cumVal < 0 ? "Bajista" : "Alcista"; return; }
-
-    // Fuente 2: texto de la sección Interpretación Order Flow
-    const mInterp = fullText.match(/interpretaci[oó]n[\w\s.]*:[\*\s]*([\s\S]*?)(?=
-\s*\*{2}|
-\s*
-\s*\d|\s*$)/i);
+    // 1. Buscar bloque de Interpretación Cum. Delta
+    const mInterp = fullText.match(/interpretaci[oó]n[\w\s.]*cum[\s.]*delta[\w\s.]*:[\*\s]*([\s\S]*?)(?=\n\s*\*|\n\s*\n\s*\d|\s*$)/i);
     const interpText = mInterp ? mInterp[1] : fullText;
-    const baj = (interpText.match(/(negativ[oa]|bajista|vendedor[ao]|bearish|bajando|presión vendedor)/gi)||[]).length;
-    const alc = (interpText.match(/(positiv[oa]|alcista|comprador[ao]|bullish|subiendo)/gi)||[]).length;
-    if (baj > alc)      { tendencia = "Bajista"; return; }
-    if (alc > baj)      { tendencia = "Alcista"; return; }
 
-    // Fuente 3: fallback en setup/sesgo
-    const setupM = fullText.match(/(?:setup|bias|sesgo|conclusi[oó]n)[^
-]{0,200}?(alcista|bajista|alza|baja|bull|bear)/i);
-    if (setupM) tendencia = /alcista|alza|bull/i.test(setupM[1]) ? "Alcista" : "Bajista";
+    const baj = (interpText.match(/\b(negativ[oa]|bajista|vendedor[ao]|bearish|bajando|presión vendedor)\b/gi) || []).length;
+    const alc = (interpText.match(/\b(positiv[oa]|alcista|comprador[ao]|bullish|subiendo)\b/gi) || []).length;
+
+    if (baj > alc)       tendencia = "Bajista";
+    else if (alc > baj)  tendencia = "Alcista";
+    else {
+      // Empate o sin Cum. Delta — fallback: buscar en setup/conclusión, NO en descripción general
+      const setupM = fullText.match(/(?:setup|bias|sesgo|conclusi[oó]n)[^\n]{0,200}?(alcista|bajista|alza|baja|bull|bear)/i);
+      if (setupM) tendencia = /alcista|alza|bull/i.test(setupM[1]) ? "Alcista" : "Bajista";
+    }
   })();
 
   // ── 3. Tipo de Operación ──────────────────────────────────────────────────
@@ -626,7 +675,7 @@ async function saveAsLatest() {
       renderPrompts();
       renderSelectors();
       setupImage();
-      switchTab(0);
+      switchTab(1);
     };
   </script>
 </body>
